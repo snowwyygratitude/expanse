@@ -1,58 +1,33 @@
-import { lessons } from "@/content";
-import type { LearningJourney, Lesson, UserProfile, UserProgress } from "./types";
+import { experiences, type Experience } from "@/experiences";
+import type { UserProgress } from "./types";
 
-function dayNumber(): number {
-  return Math.floor(Date.now() / 86_400_000);
+export interface Recommendation {
+  experience: Experience;
+  /** Short personal reason shown on the featured card. */
+  reason: string;
 }
 
-/** Next unfinished lesson in the journey, if any. */
-export function nextJourneyLesson(
-  journey: LearningJourney | null,
-  progress: UserProgress,
-): Lesson | undefined {
-  if (!journey) return undefined;
-  const id = journey.lessonIds.find((l) => !progress.completedLessonIds.includes(l));
-  return lessons.find((l) => l.id === id);
-}
-
-/** Today's featured lesson: the journey's next step, else something unexplored. */
-export function todaysLesson(
-  journey: LearningJourney | null,
-  profile: UserProfile,
-  progress: UserProgress,
-): Lesson {
-  const next = nextJourneyLesson(journey, progress);
-  if (next) return next;
-  const fresh = lessons.filter((l) => !progress.completedLessonIds.includes(l.id));
-  const preferred = fresh.filter((l) => profile.selectedTopics.includes(l.topicId));
-  const pool = preferred.length ? preferred : fresh.length ? fresh : lessons;
-  return pool[dayNumber() % pool.length];
-}
-
-/**
- * "Discover something new": an unexplored lesson from outside the journey,
- * favouring topics the user has touched least. Rotates daily.
- */
-export function discoveryLesson(
-  journey: LearningJourney | null,
-  profile: UserProfile,
-  progress: UserProgress,
-  excludeId?: string,
-): Lesson | undefined {
-  const inJourney = new Set(journey?.lessonIds ?? []);
-  const touched: Record<string, number> = {};
-  for (const id of progress.completedLessonIds) {
-    const lesson = lessons.find((l) => l.id === id);
-    if (lesson) touched[lesson.topicId] = (touched[lesson.topicId] ?? 0) + 1;
+/** Picks the experience to feature, based on what the player has and hasn't done. */
+export function recommend(progress: UserProgress): Recommendation {
+  const plays = progress.plays;
+  const unplayed = experiences.filter((e) => !plays[e.id]);
+  if (unplayed.length) {
+    return {
+      experience: unplayed[0],
+      reason: unplayed.length === experiences.length ? "Start here" : "New for you",
+    };
   }
-  const candidates = lessons.filter(
-    (l) =>
-      !progress.completedLessonIds.includes(l.id) && !inJourney.has(l.id) && l.id !== excludeId,
-  );
-  if (!candidates.length) return undefined;
-  const score = (l: Lesson) =>
-    (touched[l.topicId] ?? 0) * 2 + (profile.selectedTopics.includes(l.topicId) ? 1 : 0);
-  const min = Math.min(...candidates.map(score));
-  const pool = candidates.filter((l) => score(l) === min);
-  return pool[dayNumber() % pool.length];
+
+  for (const experience of experiences) {
+    if (experience.kind === "dialogue") {
+      const left = experience.endings.length - (plays[experience.id]?.outcomes.length ?? 0);
+      if (left > 0) return { experience, reason: `${left} ending${left === 1 ? "" : "s"} you haven't seen` };
+    }
+    if (experience.kind === "challenges" && Number(plays[experience.id]?.detail?.tricked ?? 0) > 0) {
+      return { experience, reason: "Rematch: dodge all three" };
+    }
+  }
+
+  const oldest = [...experiences].sort((a, b) => plays[a.id].lastAt.localeCompare(plays[b.id].lastAt))[0];
+  return { experience: oldest, reason: "Worth another go" };
 }
