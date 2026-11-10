@@ -171,30 +171,7 @@ export interface Lesson {
 
 /* ---------- User state ---------- */
 
-export interface UserProfile {
-  selectedTopics: TopicId[];
-  growthMotivation: MotivationId | null;
-  personalGoal: string;
-  onboardingCompleted: boolean;
-}
-
-export interface JourneyLesson {
-  lessonId: string;
-  reason: string;
-}
-
 export type ContentSource = "ai" | "demo";
-
-export interface LearningJourney {
-  id: string;
-  title: string;
-  description: string;
-  lessonIds: string[];
-  reasons: Record<string, string>;
-  currentLessonIndex: number;
-  source: ContentSource;
-  createdAt: string;
-}
 
 export type Usefulness = "very" | "somewhat" | "not";
 
@@ -207,9 +184,20 @@ export interface Interaction {
   at: string;
 }
 
+export interface PlayRecord {
+  count: number;
+  lastAt: string;
+  /** Distinct outcomes reached so far (e.g. conversation endings). */
+  outcomes: string[];
+  detail?: Record<string, string | number | boolean>;
+}
+
 export interface UserProgress {
-  completedLessonIds: string[];
+  /** Keyed by experience id. */
+  plays: Record<string, PlayRecord>;
+  /** Experience insights are stored as `exp:<id>`, lesson insights by lesson id. */
   savedInsightIds: string[];
+  completedLessonIds: string[];
   interactionHistory: Interaction[];
   lessonFeedback: Record<string, Usefulness>;
   reportedExperiments: string[];

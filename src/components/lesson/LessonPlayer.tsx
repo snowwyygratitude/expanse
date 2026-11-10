@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -18,7 +17,6 @@ import {
 import { useEffect, useState } from "react";
 import { topicById } from "@/content";
 import { requestExplanation } from "@/lib/api";
-import { nextJourneyLesson } from "@/lib/recommend";
 import { useApp } from "@/lib/store";
 import type { ContentBlock, ContentSource, Lesson, Usefulness } from "@/lib/types";
 import { Button, ButtonLink, cx, SourceTag, TopicIcon, topicVars } from "../ui";
@@ -34,7 +32,6 @@ const USEFULNESS: { id: Usefulness; label: string }[] = [
 
 export function LessonPlayer({ lesson }: { lesson: Lesson }) {
   const app = useApp();
-  const router = useRouter();
   const topic = topicById[lesson.topicId];
   const [step, setStep] = useState(0);
   const [engaged, setEngaged] = useState(false);
@@ -54,7 +51,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
   }, [step]);
 
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
-  const exit = app.profile.onboardingCompleted ? "/home" : "/";
+  const exit = "/";
 
   const footer: Record<number, { label: string; disabled?: boolean }> = {
     0: { label: lesson.hook.cta },
@@ -119,7 +116,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
             </section>
           )}
           {step === 3 && <ApplyStep lesson={lesson} />}
-          {step === 4 && <InsightStep lesson={lesson} onNavigate={(href) => router.push(href)} />}
+          {step === 4 && <InsightStep lesson={lesson} />}
         </div>
       </main>
 
@@ -303,7 +300,7 @@ function ApplyStep({ lesson }: { lesson: Lesson }) {
         )}
       </div>
       <p className="mt-5 text-sm leading-relaxed text-ink-soft">
-        No pressure and no deadline. If you try it, you can mark it as tried in My Growth.
+        No pressure and no deadline.
       </p>
     </section>
   );
@@ -311,16 +308,11 @@ function ApplyStep({ lesson }: { lesson: Lesson }) {
 
 /* ---------- E. Save and reflect ---------- */
 
-function InsightStep({ lesson, onNavigate }: { lesson: Lesson; onNavigate: (href: string) => void }) {
-  const { journey, progress, toggleSavedInsight, setLessonFeedback } = useApp();
+function InsightStep({ lesson }: { lesson: Lesson }) {
+  const { progress, toggleSavedInsight, setLessonFeedback } = useApp();
   const saved = progress.savedInsightIds.includes(lesson.id);
   const rating = progress.lessonFeedback[lesson.id];
   const [shared, setShared] = useState(false);
-
-  const upcoming = nextJourneyLesson(journey, {
-    ...progress,
-    completedLessonIds: [...progress.completedLessonIds, lesson.id],
-  });
 
   async function share() {
     const text = `“${lesson.keyInsight.headline}” ${lesson.keyInsight.text}\n\nFrom “${lesson.title}” on Aha`;
@@ -355,7 +347,7 @@ function InsightStep({ lesson, onNavigate }: { lesson: Lesson; onNavigate: (href
           onClick={() => toggleSavedInsight(lesson.id)}
         >
           {saved ? <BookmarkCheck className="size-4" aria-hidden /> : <Bookmark className="size-4" aria-hidden />}
-          {saved ? "Saved to My Growth" : "Save insight"}
+          {saved ? "Saved" : "Save insight"}
         </Button>
         <Button variant="outline" onClick={share} aria-label="Share this insight">
           {shared ? <Check className="size-4" aria-hidden /> : <Share2 className="size-4" aria-hidden />}
@@ -387,27 +379,13 @@ function InsightStep({ lesson, onNavigate }: { lesson: Lesson; onNavigate: (href
       </div>
 
       <div className="mt-8 grid gap-3 sm:grid-cols-2">
-        {upcoming ? (
-          <Button variant="primary" onClick={() => onNavigate(`/lesson/${upcoming.id}`)}>
-            Continue my journey <ArrowRight className="size-4" aria-hidden />
-          </Button>
-        ) : (
-          <ButtonLink href="/home" variant="primary">
-            Back to home <ArrowRight className="size-4" aria-hidden />
-          </ButtonLink>
-        )}
-        <ButtonLink href="/explore" variant="outline">
-          Explore another topic
+        <ButtonLink href="/" variant="primary">
+          Back to the playground <ArrowRight className="size-4" aria-hidden />
+        </ButtonLink>
+        <ButtonLink href="/collection" variant="outline">
+          My collection
         </ButtonLink>
       </div>
-      {upcoming && (
-        <p className="mt-3 text-sm text-ink-soft">
-          Up next: <span className="font-medium text-ink">{upcoming.title}</span>.{" "}
-          <Link href="/home" className="font-semibold text-(--t) hover:underline">
-            Or head home
-          </Link>
-        </p>
-      )}
 
       <Sources lesson={lesson} />
     </section>

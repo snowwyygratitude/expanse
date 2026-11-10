@@ -1,10 +1,16 @@
-# Aha — AI Personal Growth Companion (MVP v0.1)
+# Aha — an interactive personal growth playground
 
-*A little more insight. A better version of you.*
+*Experience first. Discover the insight afterward.*
 
-Aha is a mobile-first web app for exploring ideas about relationships, psychology, money,
-career, creativity, and habits in five-minute interactive lessons. Lesson content is curated;
-AI personalises how you encounter, understand, and apply it.
+Aha is a mobile-first web app where you play with ideas from psychology, communication and
+money in 3–5 minute interactive experiences. The principle behind each one is revealed only
+after you've played.
+
+| Experience | Engine | What you do |
+| --- | --- | --- |
+| **The Conversation Game** | Branching dialogue | Text with Noor after cancelling on her. Her face, mood and a connection meter react to every reply. Four endings, rewind any choice. |
+| **The Money Playground** | Simulation | Guess, then drag sliders to test your guess. Break the model in a sandbox, roll random futures. |
+| **Trick Your Brain** | Predict and reveal | Three bias challenges. Commit to an answer, see the result, replay with the alternative version and compare. |
 
 ## Run it
 
@@ -15,15 +21,9 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-Production build:
+Production: `npm run build && npm start`.
 
-```bash
-npm run build
-npm start
-```
-
-The app is fully usable with **no configuration**. Without an API key it runs in *demo mode*
-(see below).
+The app is fully playable with **no configuration** (demo mode).
 
 ## Environment variables
 
@@ -38,63 +38,66 @@ Copy `.env.example` to `.env.local` and add one key to switch on live AI.
 | `AI_PROVIDER` | `anthropic` or `openai`, when both keys are set | Anthropic first |
 | `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL` | Optional proxy / gateway | official APIs |
 
-Keys are read only on the server (`src/lib/ai/provider.ts`) and never reach the browser.
+Keys are read only on the server and never reach the browser.
 
-## Demo mode vs live AI
+## What AI does (and doesn't)
 
-| Feature | No key (demo mode) | With a key |
+| | No key (demo mode) | With a key |
 | --- | --- | --- |
-| Journey generation | Deterministic scoring on topics, motivation, goal keywords | Model picks 5 lessons and writes reasons; every id is validated against the catalog and topped up by the deterministic logic if needed |
-| Scenario / thought-experiment feedback | Pre-authored per option | Pre-authored per option (curated on purpose) |
-| Written reflections and practice | Pre-authored reflection | Personal AI response |
-| "Explain this differently" | Editor-written alternative analogy | Fresh AI analogy grounded in the lesson |
+| Conversation Game replies | Authored branching dialogue | Noor's reactions are AI-voiced and marked as such |
+| "Write your own" reply | Hidden | You type freely; AI maps your message onto one of the authored moves and replies in character |
+| Money Playground, Trick Your Brain | Deterministic | Deterministic (no AI needed) |
+| Deep-dive lessons | Pre-written feedback | Personal AI feedback and alternative explanations |
 
-Every piece of text is labelled: **AI response**, **Pre-written · demo mode**, or
-**Curated feedback**. Sources appear in their own section at the end of each lesson and are
-never mixed with AI output. If an AI call fails, the app silently falls back to the
-pre-written content. My Growth shows which mode is active.
+Guardrails: the dialogue graph, mood changes, meter effects and endings always come from
+authored data. The model only words a reply for a branch that already exists, and any
+option id it returns is validated against the current node. On any AI error the authored
+line is used.
 
-## Project structure
+## Architecture: engines and content are separate
 
 ```
 src/
-  content/              Curated library (no UI code)
-    topics.ts           6 topics + onboarding motivations
-    lessons/*.ts        18 lessons, 3 per topic
-  lib/
-    types.ts            Topic, Lesson, UserProfile, LearningJourney, UserProgress
-    journey.ts          Deterministic journey generator + validation of AI output
-    recommend.ts        Today's insight / discovery picks
-    store.tsx           App state, persisted to localStorage (key: aha:v1)
-    api.ts              Client helpers with local fallbacks
-    ai/provider.ts      AIProvider abstraction (Anthropic, OpenAI)
-    ai/prompts.ts       Prompts and guardrails
+  experiences/
+    types.ts              Content model: DialogueScenario, SavingsSimulation, ChallengeSet
+    content/*.ts          The three experiences as structured data
+    index.ts              Registry
+  components/play/        Reusable engines (no experience-specific copy)
+    PlayShell.tsx         Themed full-screen frame, Home button, progress pips, confetti
+    DialoguePlayer.tsx    Branching dialogue + choices + rewind + endings
+    Face.tsx              Expressive character avatar driven by a mood value
+    SimulationPlayer.tsx  Guess → test → sandbox flow for the savings model
+    sim.tsx               Slider, animated projection chart, animated numbers, model maths
+    ChallengePlayer.tsx   Predict-and-reveal engine (anchor, frame, sequence challenges)
+    InsightReveal.tsx     Shared payoff screen: insight, why, sources, save, replay
+    CardArt.tsx           Home card illustrations
   app/
-    page.tsx            Welcome + onboarding
-    journey/            Personalised journey with "why this one"
-    home/ explore/ growth/
-    lesson/[id]/        Lesson player
-    api/ai/             journey, feedback, explain, status
-  components/           UI kit, cards, shell, lesson player, exercises
+    page.tsx              Discovery Home
+    play/[id]/            Experience route
+    collection/           Saved insights, endings found, deep dives, reset
+    lesson/[id]/          Optional 5-minute deep-dive reads (the original 18 lessons)
+    api/ai/               dialogue, feedback, explain, status
+  lib/
+    store.tsx             Progress in localStorage (key: aha:v2)
+    recommend.ts          Picks the featured experience
+    ai/                   Provider abstraction (Anthropic, OpenAI) and prompts
+  content/                The original curated lesson library (supporting knowledge)
 ```
 
-### Adding a lesson
+### Adding content
 
-Add a `Lesson` object to a file in `src/content/lessons/`. It is picked up everywhere
-automatically. Exercise types: `scenario`, `thought-experiment`, `perspectives`,
-`reflection`, `practice`, `selection`, `simulator`. Per-option feedback lives on each
-exercise option; `feedbackGuidance` steers AI feedback and is never shown to users.
-
-### Adding an AI provider
-
-Implement the `AIProvider` interface in `src/lib/ai/provider.ts` and return it from
-`getProvider()`. Nothing else changes.
+- **A new conversation:** add a `DialogueScenario` data file (nodes, options, reactions,
+  endings, moves) and register it in `experiences/index.ts`. No UI changes.
+- **A new bias challenge:** add an entry to a `ChallengeSet` using an existing kind
+  (`anchor`, `frame`, `sequence`).
+- **A new kind of challenge or simulation model** needs a small renderer in the matching
+  engine.
 
 ## Notes and limits
 
-- User data lives only in the browser's localStorage. "Start over" in My Growth clears it.
-- Sources are real works cited by title and author. Lessons paraphrase ideas and contain no
-  quotations, links, or page numbers. Review citations editorially before a public launch.
-- Analytics for the brief's success metrics are not instrumented yet; `interactionHistory`,
-  `lessonFeedback`, and `reportedExperiments` in the store hold the raw signals.
-- Out of scope for v0.1: accounts, payments, social features, notifications.
+- Progress lives only in the browser. "Start over" in the collection clears it.
+- Research figures (anchoring averages, framing rates, tree height) are cited from the
+  named studies and should be checked editorially before a public launch.
+- The Money Playground is a simplified model with its assumptions listed in-app. It is not
+  financial advice.
+- Analytics are not instrumented yet.

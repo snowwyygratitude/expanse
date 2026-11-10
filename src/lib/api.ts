@@ -1,7 +1,6 @@
 "use client";
 
 import { getLesson } from "@/content";
-import { generateJourneyDraft, type JourneyDraft, type JourneyInput } from "./journey";
 import type { ContentSource } from "./types";
 
 /**
@@ -18,20 +17,6 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   });
   if (!response.ok) throw new Error(`Request failed: ${response.status}`);
   return response.json() as Promise<T>;
-}
-
-export async function requestJourney(
-  input: JourneyInput,
-): Promise<{ source: ContentSource; draft: JourneyDraft }> {
-  try {
-    return await post("/api/ai/journey", {
-      ...input.profile,
-      completedLessonIds: input.completedLessonIds,
-      avoidLessonIds: input.avoidLessonIds ?? [],
-    });
-  } catch {
-    return { source: "demo", draft: generateJourneyDraft(input) };
-  }
 }
 
 export async function requestFeedback(payload: {
@@ -66,5 +51,31 @@ export async function requestAIStatus(): Promise<{ enabled: boolean; provider: s
     return await response.json();
   } catch {
     return { enabled: false, provider: null };
+  }
+}
+
+export interface DialogueReply {
+  source: ContentSource;
+  /** The authored option the AI mapped a free-text message onto. */
+  choiceId?: string;
+  reply?: string;
+}
+
+/**
+ * Asks the AI to voice the character's reaction to a chosen (or typed) line.
+ * Returns `source: "demo"` when no AI is available so the caller uses the
+ * authored branch as written.
+ */
+export async function requestDialogue(payload: {
+  scenarioId: string;
+  nodeId: string;
+  choiceId?: string;
+  freeText?: string;
+  history: { who: "them" | "you"; text: string }[];
+}): Promise<DialogueReply> {
+  try {
+    return await post("/api/ai/dialogue", payload);
+  } catch {
+    return { source: "demo" };
   }
 }
