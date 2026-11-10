@@ -212,31 +212,7 @@ export function DialoguePlayer({ scenario }: { scenario: DialogueScenario }) {
     return (
       <PlayShell theme={scenario.theme} title={scenario.title}>
         <InsightReveal experience={scenario} replayLabel="Try another path" onReplay={start}>
-          <div className="rounded-3xl bg-(--panel) p-4">
-            <p className="text-[11px] font-bold tracking-[0.14em] uppercase opacity-60">Your moves</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {moves.map((move, i) => {
-                const info = scenario.moves[move];
-                return (
-                  <span
-                    key={i}
-                    className={cx(
-                      "animate-bubble rounded-full px-3 py-1.5 text-[13px] font-bold",
-                      info.effect === "opens" && "bg-emerald-300 text-emerald-950",
-                      info.effect === "closes" && "bg-rose-300 text-rose-950",
-                      info.effect === "mixed" && "bg-amber-200 text-amber-950",
-                    )}
-                    style={{ animationDelay: `${i * 140}ms` }}
-                  >
-                    {info.effect === "opens" ? "↑" : info.effect === "closes" ? "↓" : "→"} {info.label}
-                  </span>
-                );
-              })}
-            </div>
-            <p className="mt-3 text-xs opacity-60">
-              Green opened {scenario.character.name} up. Red closed her off. {found.length}/{scenario.endings.length} endings found.
-            </p>
-          </div>
+          <MovesRecap scenario={scenario} moves={moves} found={found.length} />
         </InsightReveal>
       </PlayShell>
     );
@@ -393,3 +369,36 @@ export function DialoguePlayer({ scenario }: { scenario: DialogueScenario }) {
     </PlayShell>
   );
 }
+
+/** Debrief of the moves a player made, colour-coded by their effect. */
+export function MovesRecap({ scenario, moves, found }: { scenario: DialogueScenario; moves: string[]; found: number }) {
+  return (
+    <div className="rounded-3xl bg-(--panel) p-4">
+      <p className="text-[11px] font-bold tracking-[0.14em] uppercase opacity-60">Your moves</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {moves.map((move, i) => {
+          const info = scenario.moves[move];
+          return (
+            <span
+              key={i}
+              className={cx(
+                "animate-bubble rounded-full px-3 py-1.5 text-[13px] font-bold",
+                info.effect === "opens" && "bg-emerald-300 text-emerald-950",
+                info.effect === "closes" && "bg-rose-300 text-rose-950",
+                info.effect === "mixed" && "bg-amber-200 text-amber-950",
+              )}
+              style={{ animationDelay: `${i * 140}ms` }}
+            >
+              {info.effect === "opens" ? "↑" : info.effect === "closes" ? "↓" : "→"} {info.label}
+            </span>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-xs opacity-60">
+        Green opened {scenario.character.name} up. Red closed her off. {found}/{scenario.endings.length} endings found.
+      </p>
+    </div>
+  );
+}
+
+export { resolveEnding };

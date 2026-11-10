@@ -159,7 +159,7 @@ function Reveal({
   );
 }
 
-function Bar({ label, value, max, color, suffix = "" }: { label: string; value: number; max: number; color: string; suffix?: string }) {
+export function Bar({ label, value, max, color, suffix = "" }: { label: string; value: number; max: number; color: string; suffix?: string }) {
   const [w] = useTweenedArray([(value / max) * 100], 700);
   return (
     <div className="mt-2">
@@ -178,7 +178,7 @@ function Bar({ label, value, max, color, suffix = "" }: { label: string; value: 
 
 /* ---------- 1. Anchoring ---------- */
 
-function Tree({ height, max, label }: { height: number; max: number; label: string }) {
+export function Tree({ height, max, label }: { height: number; max: number; label: string }) {
   const [h] = useTweenedArray([height], 300);
   const px = 26 + (h / max) * 150;
   return (
@@ -311,6 +311,37 @@ function Anchor({ challenge: c, onResult, onNext, last }: ChallengeProps<AnchorC
 
 /* ---------- 2. Framing ---------- */
 
+/** Where the wheel must stop (in degrees of rotation) for a win or a loss. */
+export function spinTarget(winChance: number, won: boolean) {
+  const winDeg = winChance * 360;
+  const landing = won ? Math.random() * (winDeg - 16) + 8 : winDeg + 8 + Math.random() * (360 - winDeg - 16);
+  return 360 * 4 + (360 - landing);
+}
+
+export function Wheel({ stake, winChance, spinDeg }: { stake: number; winChance: number; spinDeg?: number }) {
+  const winDeg = winChance * 360;
+  return (
+    <div className="relative mx-auto mt-4 grid size-52 place-items-center">
+      <div
+        className="size-full rounded-full border-8 border-white/90 shadow-2xl"
+        style={{
+          background: `conic-gradient(#7BE495 0deg ${winDeg}deg, #F2617A ${winDeg}deg 360deg)`,
+          transform: `rotate(${spinDeg ?? 0}deg)`,
+          transition: spinDeg ? "transform 2.4s cubic-bezier(0.15, 0.8, 0.2, 1)" : "none",
+        }}
+      />
+      <div className="absolute -top-2 left-1/2 h-0 w-0 -translate-x-1/2 border-x-[10px] border-t-[18px] border-x-transparent border-t-white drop-shadow" />
+      <div className="absolute grid size-24 place-items-center rounded-full bg-white text-center text-[#22135E] shadow-lg">
+        <div>
+          <p className="font-display text-3xl leading-none font-bold">${stake}</p>
+          <p className="text-[10px] font-bold tracking-wide uppercase opacity-60">is yours</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function Frame({ challenge: c, onResult, onNext, last }: ChallengeProps<FrameChallenge>) {
   const first = useMemo<"gain" | "loss">(() => (Math.random() < 0.5 ? "gain" : "loss"), []);
   const [frame, setFrame] = useState<"gain" | "loss">(first);
@@ -318,7 +349,6 @@ function Frame({ challenge: c, onResult, onNext, last }: ChallengeProps<FrameCha
   const [spin, setSpin] = useState<{ deg: number; won: boolean } | null>(null);
   const [attempts, setAttempts] = useState<{ frame: "gain" | "loss"; gambled: boolean }[]>([]);
 
-  const winDeg = c.winChance * 360;
   const sureLabel = frame === "gain" ? `Keep $${c.sure}` : `Lose $${c.stake - c.sure}`;
 
   function decide(gambled: boolean) {
@@ -327,8 +357,7 @@ function Frame({ challenge: c, onResult, onNext, last }: ChallengeProps<FrameCha
     if (attempts.length === 0) onResult(frame === "gain" ? !gambled : gambled);
     if (!gambled) return setStep("reveal");
     const won = Math.random() < c.winChance;
-    const landing = won ? Math.random() * (winDeg - 16) + 8 : winDeg + 8 + Math.random() * (360 - winDeg - 16);
-    setSpin({ deg: 360 * 4 + (360 - landing), won });
+    setSpin({ deg: spinTarget(c.winChance, won), won });
     setStep("spinning");
     setTimeout(() => setStep("reveal"), 2600);
   }
@@ -342,23 +371,7 @@ function Frame({ challenge: c, onResult, onNext, last }: ChallengeProps<FrameCha
   const latest = attempts[attempts.length - 1];
   return (
     <>
-      <div className="relative mx-auto mt-4 grid size-52 place-items-center">
-        <div
-          className="size-full rounded-full border-8 border-white/90 shadow-2xl"
-          style={{
-            background: `conic-gradient(#7BE495 0deg ${winDeg}deg, #F2617A ${winDeg}deg 360deg)`,
-            transform: `rotate(${spin?.deg ?? 0}deg)`,
-            transition: spin ? "transform 2.4s cubic-bezier(0.15, 0.8, 0.2, 1)" : "none",
-          }}
-        />
-        <div className="absolute -top-2 left-1/2 h-0 w-0 -translate-x-1/2 border-x-[10px] border-t-[18px] border-x-transparent border-t-white drop-shadow" />
-        <div className="absolute grid size-24 place-items-center rounded-full bg-white text-center text-[#22135E] shadow-lg">
-          <div>
-            <p className="font-display text-3xl leading-none font-bold">${c.stake}</p>
-            <p className="text-[10px] font-bold tracking-wide uppercase opacity-60">is yours</p>
-          </div>
-        </div>
-      </div>
+      <Wheel stake={c.stake} winChance={c.winChance} spinDeg={spin?.deg} />
       <p className="mt-2 text-center text-xs opacity-75">
         <span className="font-bold text-[#7BE495]">{Math.round(c.winChance * 100)}% keep it all</span> ·{" "}
         <span className="font-bold text-[#FF9AAA]">{Math.round((1 - c.winChance) * 100)}% lose it all</span>
@@ -418,7 +431,7 @@ function Frame({ challenge: c, onResult, onNext, last }: ChallengeProps<FrameCha
 
 /* ---------- 3. Randomness ---------- */
 
-function Coins({ flips, small }: { flips: string; small?: boolean }) {
+export function Coins({ flips, small }: { flips: string; small?: boolean }) {
   return (
     <span className="flex gap-1">
       {flips.split("").map((f, i) => (

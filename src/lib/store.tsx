@@ -10,11 +10,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Interaction, PlayRecord, Usefulness, UserProgress } from "./types";
+import type { Interaction, PlayMode, PlayRecord, Usefulness, UserProgress } from "./types";
 
 const STORAGE_KEY = "aha:v2";
 
 const initialState: UserProgress = {
+  mode: "story",
   plays: {},
   savedInsightIds: [],
   completedLessonIds: [],
@@ -40,6 +41,7 @@ interface AppContextValue {
   progress: UserProgress;
   /** Records a finished run of an experience and the outcome it reached. */
   recordPlay: (experienceId: string, outcome?: string, detail?: PlayRecord["detail"]) => void;
+  setMode: (mode: PlayMode) => void;
   toggleSavedInsight: (insightId: string) => void;
   visitLesson: (lessonId: string) => void;
   completeLesson: (lessonId: string) => void;
@@ -97,6 +99,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             },
           };
         }),
+      setMode: (mode: PlayMode) => update((p) => ({ ...p, mode })),
       toggleSavedInsight: (id: string) =>
         update((p) => ({ ...p, savedInsightIds: toggle(p.savedInsightIds, id) })),
       visitLesson: (id: string) =>
@@ -120,7 +123,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })),
       setLessonFeedback: (id: string, value: Usefulness) =>
         update((p) => ({ ...p, lessonFeedback: { ...p.lessonFeedback, [id]: value } })),
-      reset: () => setProgress(initialState),
+      reset: () => setProgress((p) => ({ ...initialState, mode: p.mode })),
     }),
     [update],
   );

@@ -162,12 +162,15 @@ export function ProjectionChart({
   fromAge,
   endAge,
   max,
+  reveal = 1,
 }: {
   series: ChartSeries[];
   fromAge: number;
   endAge: number;
   /** Fixed y-axis top; defaults to the tallest series. */
   max?: number;
+  /** Draw only the first fraction (0..1) of the timeline, for animated playback. */
+  reveal?: number;
 }) {
   const n = endAge - fromAge + 1;
   const top = Math.max(max ?? 0, ...series.flatMap((s) => s.values), 1) * 1.08;
@@ -179,9 +182,14 @@ export function ProjectionChart({
         <line key={f} x1={PAD.l} x2={W - PAD.r} y1={H - PAD.b - f * (H - PAD.t - PAD.b)} y2={H - PAD.b - f * (H - PAD.t - PAD.b)}
           stroke="currentColor" opacity="0.1" strokeDasharray="2 5" />
       ))}
-      {series.map((s) => (
-        <Line key={s.id} series={s} max={tweenedTop} n={n} />
-      ))}
+      <clipPath id="chart-reveal">
+        <rect x="0" y="0" width={PAD.l + reveal * (W - PAD.l - PAD.r) + (reveal >= 1 ? 20 : 0)} height={H} />
+      </clipPath>
+      <g clipPath="url(#chart-reveal)">
+        {series.map((s) => (
+          <Line key={s.id} series={s} max={tweenedTop} n={n} />
+        ))}
+      </g>
       {ticks.map((age, i) => (
         <text key={age} x={i === 0 ? PAD.l : i === 1 ? W / 2 : W - PAD.r} y={H - 4}
           textAnchor={i === 0 ? "start" : i === 1 ? "middle" : "end"} fontSize="11" fill="currentColor" opacity="0.6">

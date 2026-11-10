@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bookmark, Clock, Dices, Play } from "lucide-react";
+import { Bookmark, Clapperboard, Clock, Dices, Hand, Play } from "lucide-react";
 import { useState } from "react";
 import { CardArt } from "@/components/play/CardArt";
 import { themeVars } from "@/components/play/PlayShell";
@@ -12,7 +12,8 @@ import { recommend } from "@/lib/recommend";
 import { useApp } from "@/lib/store";
 
 export default function HomePage() {
-  const { progress, hydrated } = useApp();
+  const { progress, hydrated, setMode } = useApp();
+  const base = progress.mode === "tap" ? "/play" : "/watch";
   const router = useRouter();
   const [rolling, setRolling] = useState(false);
   const pick = recommend(progress);
@@ -21,7 +22,7 @@ export default function HomePage() {
   function surprise() {
     setRolling(true);
     const choice = others[Math.floor(Math.random() * others.length)];
-    setTimeout(() => router.push(`/play/${choice.id}`), 550);
+    setTimeout(() => router.push(`${base}/${choice.id}`), 550);
   }
 
   return (
@@ -41,8 +42,32 @@ export default function HomePage() {
         Play with an idea.
       </h1>
 
+      <div role="radiogroup" aria-label="How to play" className="mt-4 inline-flex rounded-full bg-sand p-1">
+        {(
+          [
+            { id: "story", label: "Story", hint: "Watch and swipe", icon: Clapperboard },
+            { id: "tap", label: "Tap", hint: "Tap through", icon: Hand },
+          ] as const
+        ).map(({ id, label, hint, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={progress.mode === id}
+            title={hint}
+            onClick={() => setMode(id)}
+            className={cx(
+              "inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition",
+              progress.mode === id ? "bg-ink text-white shadow" : "text-ink-soft hover:text-ink",
+            )}
+          >
+            <Icon className="size-4" aria-hidden /> {label}
+          </button>
+        ))}
+      </div>
+
       <div className="mt-4 grid gap-3 md:mt-6 md:grid-cols-3 md:gap-4">
-        <ExperienceCard experience={pick.experience} tag={hydrated ? pick.reason : undefined} featured />
+        <ExperienceCard base={base} experience={pick.experience} tag={hydrated ? pick.reason : undefined} featured />
 
         <button
           type="button"
@@ -60,7 +85,7 @@ export default function HomePage() {
         </button>
 
         {others.map((experience) => (
-          <ExperienceCard key={experience.id} experience={experience} played={Boolean(progress.plays[experience.id])} />
+          <ExperienceCard key={experience.id} base={base} experience={experience} played={Boolean(progress.plays[experience.id])} />
         ))}
       </div>
     </main>
@@ -68,11 +93,13 @@ export default function HomePage() {
 }
 
 function ExperienceCard({
+  base,
   experience,
   featured = false,
   tag,
   played,
 }: {
+  base: string;
   experience: Experience;
   featured?: boolean;
   tag?: string;
@@ -80,7 +107,7 @@ function ExperienceCard({
 }) {
   return (
     <Link
-      href={`/play/${experience.id}`}
+      href={`${base}/${experience.id}`}
       style={themeVars(experience.theme)}
       className={cx(
         "play-surface group relative flex flex-col justify-end overflow-hidden rounded-[2rem] p-5 shadow-xl transition duration-300 hover:-translate-y-1 hover:shadow-2xl active:scale-[0.99]",
@@ -115,7 +142,7 @@ function ExperienceCard({
             featured ? "animate-glow px-8 py-3.5 text-lg" : "px-5 py-2.5 text-sm",
           )}
         >
-          <Play className={featured ? "size-5" : "size-4"} fill="currentColor" aria-hidden /> Play
+          <Play className={featured ? "size-5" : "size-4"} fill="currentColor" aria-hidden /> {base === "/watch" ? "Watch" : "Play"}
         </span>
       </div>
     </Link>

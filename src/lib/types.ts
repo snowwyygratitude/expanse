@@ -192,7 +192,11 @@ export interface PlayRecord {
   detail?: Record<string, string | number | boolean>;
 }
 
+export type PlayMode = "story" | "tap";
+
 export interface UserProgress {
+  /** Preferred way to play: video-style stories or tap-through. */
+  mode: PlayMode;
   /** Keyed by experience id. */
   plays: Record<string, PlayRecord>;
   /** Experience insights are stored as `exp:<id>`, lesson insights by lesson id. */

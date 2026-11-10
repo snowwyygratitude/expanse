@@ -12,6 +12,22 @@ after you've played.
 | **The Money Playground** | Simulation | Guess, then drag sliders to test your guess. Break the model in a sandbox, roll random futures. |
 | **Trick Your Brain** | Predict and reveal | Three bias challenges. Commit to an answer, see the result, replay with the alternative version and compare. |
 
+## Two ways to play
+
+Home has a **Story / Tap** switch (remembered per browser). Both modes run on the same
+experience data.
+
+- **Story** (`/watch/[id]`, default): plays like a short vertical video. Scenes advance on
+  their own with a segmented progress bar and animated captions; hold anywhere to pause;
+  an optional voice reads lines aloud. You join in with gestures instead of buttons:
+  swipe a deck of replies and flick one up to send, pull down to take a choice back,
+  swipe up/down or left/right to decide, drag to grow a tree or raise a savings line and
+  hold still to lock it in, drag sideways to scrub time. Arrow keys and Enter do the same
+  on a keyboard.
+- **Tap** (`/play/[id]`): the original tap-through version, with extras the story mode
+  leaves out (write-your-own replies with AI, the money sandbox, replay-and-compare in
+  the bias challenges).
+
 ## Run it
 
 Requires Node.js 20+.
@@ -71,9 +87,14 @@ src/
     ChallengePlayer.tsx   Predict-and-reveal engine (anchor, frame, sequence challenges)
     InsightReveal.tsx     Shared payoff screen: insight, why, sources, save, replay
     CardArt.tsx           Home card illustrations
+  components/story/       Story (video-style) engine
+    StoryStage.tsx        Vertical stage: timed beats, progress segments, hold to pause, voice
+    gestures.tsx          ReplyDeck (swipe + flick), SwipeChoice, DragValue (drag + hold to lock)
+    ConversationStory.tsx, MoneyStory.tsx, BrainStory.tsx
   app/
     page.tsx              Discovery Home
-    play/[id]/            Experience route
+    watch/[id]/           Story-mode route
+    play/[id]/            Tap-mode route
     collection/           Saved insights, endings found, deep dives, reset
     lesson/[id]/          Optional 5-minute deep-dive reads (the original 18 lessons)
     api/ai/               dialogue, feedback, explain, status
@@ -100,4 +121,6 @@ src/
   named studies and should be checked editorially before a public launch.
 - The Money Playground is a simplified model with its assumptions listed in-app. It is not
   financial advice.
+- Story mode uses animated scenes built in code, not filmed or generated video footage.
+  The voice uses the browser's built-in speech synthesis, so it varies by device.
 - Analytics are not instrumented yet.
