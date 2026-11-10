@@ -125,7 +125,6 @@ function Trick({ challenge, verdict, children }: { challenge: Challenge; verdict
         <p className="font-display text-3xl font-semibold">{challenge.principle}</p>
         <p className="mt-1 text-[15px] leading-snug opacity-80">{challenge.principleLine}</p>
       </div>
-      <p className="mt-3 text-center text-[10px] font-bold tracking-wide uppercase opacity-40">Hold to pause</p>
     </div>
   );
 }

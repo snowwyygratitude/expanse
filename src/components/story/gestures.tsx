@@ -16,15 +16,17 @@ interface DragState {
 export function useDrag(opts: {
   onMove?: (dx: number, dy: number, step: { ddx: number; ddy: number }) => void;
   onEnd?: (dx: number, dy: number) => void;
+  /** A press that barely moved. Receives the element under the pointer. */
+  onTap?: (target: Element | null) => void;
 }) {
   const [drag, setDrag] = useState<DragState>({ dx: 0, dy: 0, active: false });
-  const origin = useRef<{ x: number; y: number; lx: number; ly: number } | null>(null);
+  const origin = useRef<{ x: number; y: number; lx: number; ly: number; at: number } | null>(null);
 
   const bind = {
     onPointerDown: (e: PointerEvent<HTMLElement>) => {
       e.stopPropagation();
       e.currentTarget.setPointerCapture?.(e.pointerId);
-      origin.current = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY };
+      origin.current = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, at: performance.now() };
       setDrag({ dx: 0, dy: 0, active: true });
     },
     onPointerMove: (e: PointerEvent<HTMLElement>) => {
@@ -41,8 +43,13 @@ export function useDrag(opts: {
       const o = origin.current;
       if (!o) return;
       origin.current = null;
-      opts.onEnd?.(e.clientX - o.x, e.clientY - o.y);
+      const dx = e.clientX - o.x;
+      const dy = e.clientY - o.y;
       setDrag({ dx: 0, dy: 0, active: false });
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8 && performance.now() - o.at < 400) {
+        return opts.onTap?.(document.elementFromPoint(e.clientX, e.clientY));
+      }
+      opts.onEnd?.(dx, dy);
     },
     onPointerCancel: () => {
       origin.current = null;
@@ -58,7 +65,7 @@ export function ReplyDeck({
   options,
   onSend,
   onRewind,
-  sendLabel = "Flick up to send",
+  sendLabel = "Flick up or tap to send",
 }: {
   options: { id: string; content: ReactNode }[];
   onSend: (id: string) => void;
@@ -84,6 +91,14 @@ export function ReplyDeck({
       if (dy > 80 && Math.abs(dy) > Math.abs(dx)) return onRewind?.();
       if (dx < -45) setActive((a) => clamp(a + 1));
       else if (dx > 45) setActive((a) => clamp(a - 1));
+    },
+    // Tap the front card to send it; tap a card behind to bring it forward.
+    onTap: (target) => {
+      const id = target?.closest("[data-reply]")?.getAttribute("data-reply");
+      const i = options.findIndex((o) => o.id === id);
+      if (i === -1 || sent) return;
+      if (i === active) send();
+      else setActive(i);
     },
   });
 
@@ -120,6 +135,7 @@ export function ReplyDeck({
             <div
               key={option.id}
               id={`reply-${option.id}`}
+              data-reply={option.id}
               role="option"
               aria-selected={isActive}
               className={cx(
@@ -147,7 +163,7 @@ export function ReplyDeck({
         <ChevronRight className={cx("size-4", active === options.length - 1 ? "opacity-20" : "opacity-80")} aria-hidden />
       </div>
       <p className="mt-1 text-center text-[11px] font-semibold opacity-60">
-        Swipe to browse{onRewind ? " · pull down to take it back" : ""}
+        Swipe or tap to browse · tap the front card to send{onRewind ? " · pull down to undo" : ""}
       </p>
     </div>
   );
@@ -186,6 +202,10 @@ export function SwipeChoice({
       if (d <= -THRESHOLD) choose(first.id);
       else if (d >= THRESHOLD) choose(second.id);
     },
+    onTap: (target) => {
+      const id = target?.closest("[data-choice]")?.getAttribute("data-choice");
+      if (id) choose(id);
+    },
   });
   useEffect(() => root.current?.focus(), []);
 
@@ -195,10 +215,11 @@ export function SwipeChoice({
   const Before = axis === "x" ? ChevronLeft : ChevronUp;
   const After = axis === "x" ? ChevronRight : ChevronDown;
 
-  const label = (side: -1 | 1, option: { label: string }, Icon: typeof ChevronUp) => {
+  const label = (side: -1 | 1, option: { id: string; label: string }, Icon: typeof ChevronUp) => {
     const strength = Math.max(0, lean * side);
     return (
       <div
+        data-choice={option.id}
         className={cx(
           "flex items-center justify-center gap-2 rounded-2xl border-2 px-3 py-3 text-center text-[15px] leading-tight font-bold transition-colors",
           axis === "x" ? "flex-1" : "w-full",
@@ -245,7 +266,7 @@ export function SwipeChoice({
         </div>
       )}
       <p className="pointer-events-none text-center text-[11px] font-bold tracking-wide uppercase opacity-60">
-        Swipe {axis === "x" ? "left or right" : "up or down"} to choose
+        Swipe {axis === "x" ? "left or right" : "up or down"}, or tap one
       </p>
     </div>
   );
@@ -266,6 +287,7 @@ export function DragValue({
   lockLabel = "Hold still to lock in",
   hint,
   canLock = true,
+  onSkip,
   children,
 }: {
   axis: "x" | "y";
@@ -281,6 +303,8 @@ export function DragValue({
   lockLabel?: string;
   hint: string;
   canLock?: boolean;
+  /** Shows a small Skip control that moves on without the gesture. */
+  onSkip?: () => void;
   children: ReactNode;
 }) {
   const [touched, setTouched] = useState(false);
@@ -300,6 +324,10 @@ export function DragValue({
     onMove: (_dx, _dy, { ddx, ddy }) => {
       const delta = axis === "x" ? ddx : -ddy;
       set(raw.current + (delta / pixelsPerRange) * (max - min));
+    },
+    // Once a value is set, a tap locks it in straight away.
+    onTap: () => {
+      if (touched && canLock) lock.current?.();
     },
   });
   useEffect(() => root.current?.focus(), []);
@@ -342,7 +370,7 @@ export function DragValue({
               <circle className="track" cx="18" cy="18" r="15.9" fill="none" strokeWidth="4" />
               <circle className="fill" cx="18" cy="18" r="15.9" fill="none" strokeWidth="4" pathLength="100" strokeLinecap="round" />
             </svg>
-            {lockLabel}
+            {lockLabel}, or tap
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 text-[12px] font-bold tracking-wide uppercase opacity-80">
@@ -350,6 +378,16 @@ export function DragValue({
           </span>
         )}
       </div>
+      {onSkip && (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onSkip}
+          className="absolute right-0 bottom-1 rounded-full bg-black/25 px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase"
+        >
+          Skip ›
+        </button>
+      )}
     </div>
   );
 }

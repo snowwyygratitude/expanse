@@ -177,6 +177,7 @@ export function MoneyStory({ sim }: { sim: SavingsSimulation }) {
               value={monthly}
               onChange={setMonthly}
               hint={`Drag up to raise ${c.late.name}'s savings`}
+              onSkip={caught ? undefined : () => setMonthly(needed)}
             >
               {chart}
               <div className="relative flex flex-1 flex-col items-center justify-center text-center">
@@ -213,6 +214,7 @@ export function MoneyStory({ sim }: { sim: SavingsSimulation }) {
               canLock={wait >= 15}
               lockMs={2200}
               lockLabel="Hold still to see why"
+              onSkip={next}
               hint={wait > 0 ? "Keep dragging: wait 15+ years" : "Drag sideways to scrub the wait"}
             >
               {chart}

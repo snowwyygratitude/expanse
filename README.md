@@ -18,12 +18,14 @@ Home has a **Story / Tap** switch (remembered per browser). Both modes run on th
 experience data.
 
 - **Story** (`/watch/[id]`, default): plays like a short vertical video. Scenes advance on
-  their own with a segmented progress bar and animated captions; hold anywhere to pause;
+  their own with a segmented progress bar and animated captions; tap to skip ahead, hold
+  anywhere to pause;
   an optional voice reads lines aloud. You join in with gestures instead of buttons:
   swipe a deck of replies and flick one up to send, pull down to take a choice back,
   swipe up/down or left/right to decide, drag to grow a tree or raise a savings line and
   hold still to lock it in, drag sideways to scrub time. Arrow keys and Enter do the same
-  on a keyboard.
+  on a keyboard. Every gesture also has a tap equivalent (tap a reply card, tap a choice,
+  tap to lock a value, or use the Skip chip).
 - **Tap** (`/play/[id]`): the original tap-through version, with extras the story mode
   leaves out (write-your-own replies with AI, the money sandbox, replay-and-compare in
   the bias challenges).

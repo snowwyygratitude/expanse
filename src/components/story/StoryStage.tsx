@@ -55,6 +55,22 @@ export function StoryStage({
   done.current = onBeatEnd;
   const heldRef = useRef(false);
   heldRef.current = held;
+  // A quick tap skips to the next beat; a longer press pauses while held.
+  const press = useRef<{ at: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const TAP_MS = 220;
+
+  const pressStart = () => {
+    if (duration === null) return;
+    press.current = { at: performance.now(), timer: setTimeout(() => setHeld(true), TAP_MS) };
+  };
+  const pressEnd = (allowTap: boolean) => {
+    const p = press.current;
+    press.current = null;
+    setHeld(false);
+    if (!p) return;
+    clearTimeout(p.timer);
+    if (allowTap && performance.now() - p.at < TAP_MS) done.current();
+  };
 
   // Beat timer: advances the current progress segment and fires onBeatEnd.
   useEffect(() => {
@@ -76,7 +92,14 @@ export function StoryStage({
 
   // Space pauses timed beats for keyboard users.
   useEffect(() => {
-    const down = (e: KeyboardEvent) => e.code === "Space" && duration !== null && (e.preventDefault(), setHeld(true));
+    const down = (e: KeyboardEvent) => {
+      if (duration === null) return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        setHeld(true);
+      }
+      if (e.key === "ArrowRight" || e.key === "Enter") done.current();
+    };
     const up = (e: KeyboardEvent) => e.code === "Space" && setHeld(false);
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -105,10 +128,10 @@ export function StoryStage({
       <div
         style={themeVars(theme)}
         className="play-surface relative flex h-dvh w-full flex-col overflow-hidden select-none md:max-w-[calc(100dvh*9/16)] md:rounded-[2rem]"
-        onPointerDown={() => timed && setHeld(true)}
-        onPointerUp={() => setHeld(false)}
-        onPointerLeave={() => setHeld(false)}
-        onPointerCancel={() => setHeld(false)}
+        onPointerDown={pressStart}
+        onPointerUp={() => pressEnd(true)}
+        onPointerLeave={() => pressEnd(false)}
+        onPointerCancel={() => pressEnd(false)}
         onContextMenu={(e) => e.preventDefault()}
       >
         <div className="z-20 px-3 pt-3">
@@ -151,6 +174,12 @@ export function StoryStage({
         <SoundContext.Provider value={speak}>
           <div className="relative flex min-h-0 flex-1 flex-col">{children}</div>
         </SoundContext.Provider>
+
+        {timed && !held && (
+          <p className="pointer-events-none absolute inset-x-0 bottom-2 z-20 text-center text-[10px] font-bold tracking-wide uppercase opacity-45">
+            Tap to continue · hold to pause
+          </p>
+        )}
 
         {held && timed && (
           <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center bg-black/30">
