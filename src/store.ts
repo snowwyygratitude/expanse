@@ -12,14 +12,18 @@ export interface Keepsake {
 export interface Memory { id: string; text: string; date: number; u: number; v: number; }
 export interface Planted { emo: Emotion | 'wish' | 'worry'; x: number; y: number; words?: string; ax?: number; ay?: number; }
 
+/** a wish growing in the garden: a young tree, its three blossoms, and a leaf for every step taken toward it */
+export type Desire = DesireSpec & { id: string; x: number; y: number; born: number; opened: boolean[]; steps: { text: string; date: number }[]; active: boolean };
+export const MAX_WISHES = 3;
+
 export interface Save {
   v: 1;
   planted: Planted[];
   wish: WishSpec | null;
   /** the worry currently in the garden: held (a stone to carry), planted (being unknotted) or done */
   worry: (WorrySpec & { stage: 'held' | 'planted' | 'done'; opened: boolean[]; explored?: boolean; part?: string }) | null;
-  /** the wish growing in the garden: a young tree, its three blossoms, and a leaf for every step taken toward it */
-  desire: (DesireSpec & { x: number; y: number; born: number; opened: boolean[]; steps: { text: string; date: number }[]; active: boolean }) | null;
+  /** up to three; the one whose morning fills the sky is `active` */
+  desires: Desire[];
   discovered: Record<string, number>;   // world key -> first seen
   treasures: Record<string, number>;    // keepsake kind -> first found
   keepsakes: Keepsake[];
@@ -37,14 +41,14 @@ export interface Save {
 
 const KEY = 'expanse.garden.v1';
 const fresh = (): Save => ({
-  v: 1, planted: [], wish: null, worry: null, desire: null, discovered: {}, treasures: {}, keepsakes: [], memories: [],
+  v: 1, planted: [], wish: null, worry: null, desires: [], discovered: {}, treasures: {}, keepsakes: [], memories: [],
   hopeUnlocked: false, everPlanted: false, layout: null, moveHint: false, worryUsed: false, sound: false, soundOff: false, lastVisit: '',
 });
 
 export function load(): Save {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) { const s = JSON.parse(raw); if (s && s.v === 1) return { ...fresh(), ...s }; }
+    if (raw) { const s = JSON.parse(raw); if (s && s.v === 1) { if (s.desire && !s.desires) s.desires = [{ id: 'w' + Date.now().toString(36), ...s.desire }]; delete s.desire; return { ...fresh(), ...s }; } }
   } catch { /* storage unavailable: the garden still works, it just forgets */ }
   return fresh();
 }

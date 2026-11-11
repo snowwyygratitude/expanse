@@ -128,7 +128,8 @@ Wishes
 - **Whisper it.** Touch the Listening Flower. Its bloom opens and becomes the
   place to write: "What are you hoping for?", with a few starting points.
 - **Reconnect with why.** One question follows, and can be skipped: "Imagine
-  it's already true. What do you feel first?"
+  it's already true. What do you feel first?" (excited, gratitude, joyful, at
+  peace, or your own words)
 - **The garden answers at once.** A seed of light leaves the bloom, takes root
   where you are looking and grows into a young wish tree, while a morning
   scene composed from the wish comes up around it.
@@ -138,7 +139,10 @@ Wishes
   a leaf of light; the tree fills out with every step and every day. The tree
   stays when feelings are planted (they take the sky; touching the tree with
   nothing planted brings its morning back) and can be moved like anything else.
-  Whispering a new wish replaces it.
+  Up to three wish trees can grow at once, each with its own blossoms and
+  leaves; the one you touched last holds the sky. With three growing, the
+  flower says so. Carry a wish tree back to the flower (it glows and says "let
+  it go here") to let that wish go and make room for another.
 - Words come from Claude when available (`DESIRE_SYSTEM` in
   `shared/prompts.mjs`, `/api/desire` on the server), otherwise from the themes
   in `src/desire.ts`. A wish's scene never has a storm, rain, a door or a gate.

@@ -16,7 +16,7 @@ import { DESIRE_SYSTEM } from '../shared/prompts.mjs';
 export interface DesireSpec { wish: string; feeling?: string; scene: WishSpec; reflect: string; blossoms: Petal[]; by: Composer; }
 export const BLOSSOM_LABELS = ['What this wish says about you', 'What is already true', 'One first step'];
 export const WISH_STARTERS: [string, string][] = [['something I’d like to make', 'I’d like to make '], ['someone I’d like to become', 'I’d like to become '], ['somewhere I’d like to go', 'I’d like to go '], ['a way I’d like to feel', 'I’d like to feel '], ['something else', '']];
-export const FEELINGS = ['proud', 'free', 'at peace', 'close to someone', 'alive'];
+export const FEELINGS = ['excited', 'gratitude', 'joyful', 'at peace'];
 
 interface Theme { re: RegExp; name: string; line: string; value: string; already: string; step: string; emotions: Record<string, number>; features: [string, number][]; }
 const THEMES: Theme[] = [

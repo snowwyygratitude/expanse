@@ -134,6 +134,7 @@ for (const e of [...BASE_EMOTIONS, 'hope' as const]) add(`Plant or lift the ${EM
 add('Look up at the skies you have found', () => garden.openSky());
 add('Whisper a wish', () => void garden.askWish());
 add('Tell the wish tree what you did', () => void garden.askStep());
+add('Let a wish go', () => garden.releaseWish());
 add('Set down a worry', () => void garden.askWorry());
 add('Let the worry go', () => garden.releaseWorry());
 add('Keep this world in a dewdrop', () => garden.bottleWorld());
