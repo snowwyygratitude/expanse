@@ -1197,7 +1197,7 @@ export class Garden {
     if (!this.rm) for (let i = 0; i < 3; i++) { const q = (t * (busy ? 1.2 : 0.35) + i / 3) % 1; ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - q)})`; ell(ctx, hx + 16 + Math.sin(q * 6 + i) * 6, hyy - 30 - q * 46, 2, 2); ctx.fill(); }
     ctx.restore();
     // its words, above the bloom, on a soft dark backing so they read over any sky or scenery
-    const said = busy ? 'listening…' : this.save.wish ? (this.seedBusy('wish') ? '' : 'carry your wish-seed into the garden') : 'whisper a wish';
+    const said = busy ? 'listening…' : this.save.wish ? (this.seedBusy('wish') ? '' : 'plant your wish') : 'whisper a wish';
     if (said) {
       const ly = HY - 62;
       ctx.save(); ctx.translate(HX + 4, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, said.length * 5.2 + 34, [10, 14, 40], 0.55); ctx.restore();
