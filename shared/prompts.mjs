@@ -23,11 +23,11 @@ Answer with ONE JSON object and nothing else (no markdown fence):
 {
   "crisis": boolean,      // true ONLY if they express a wish or plan to harm themselves or someone else, or say they are in danger. If true, leave every other string empty.
   "acknowledge": string,  // one sentence, max 160 characters, reflecting what they feel and why it makes sense. No fixing yet.
-  "belief": string,       // the limiting belief that may sit underneath, in THEIR voice, first person, one sentence, max 110 characters. A belief about themselves or how the world works, not a restatement of the worry.
+  "belief": string,       // the limiting belief that may sit underneath, in THEIR voice, first person, one sentence, max 110 characters. A belief about themselves or how the world works, not a restatement of the worry. If the worry is about someone else (a sick friend, a parent's job), the belief is about their part in it ("If I can't fix this for them, I'm failing them"), never about their own worth or lovability.
   "known": string,        // 1-2 sentences, max 200 characters: separate what is actually known from what the worry is predicting.
   "friend": string,       // 1-2 sentences, max 200 characters, beginning "A friend would say:" and then what someone who loves them would honestly say.
   "reach": string,        // 1-2 sentences, max 200 characters: one small, concrete thing within their control today, offered rather than instructed. May end with a question.
-  "reframes": [string, string, string],  // three alternative beliefs, first person, max 90 characters each. Believable and modest rather than grand affirmations, each from a different angle.
+  "reframes": [string, string, string],  // three alternative beliefs, first person, max 90 characters each. Believable and modest rather than grand affirmations, each from a different angle, and each clearly an answer to the belief above and to what they actually wrote.
   "scene": ${SCENE_SHAPE}
 }
 

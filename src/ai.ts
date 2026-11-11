@@ -17,16 +17,32 @@ export interface WishMemory { discovered: string[]; treasures: string[]; }
 let composer: Composer = 'local';
 let sample: any = null;
 
-export async function detectComposer(): Promise<Composer> {
-  try {
-    const r = await fetch('/api/health', { signal: AbortSignal.timeout(2500) });
-    if (r.ok && (await r.json()).ai) return (composer = 'server');
-  } catch { /* no server: fine */ }
-  try {
-    const c = (window as any).claude;
-    if (c?.use) { sample = await c.use('sample'); if (sample) return (composer = 'artifact'); }
-  } catch { /* not an artifact */ }
-  return (composer = 'local');
+let detecting: Promise<Composer> | null = null;
+/**
+ * Find out who can compose. Inside a Claude artifact the `claude` object can
+ * appear a moment after the page starts, so keep looking for a while rather
+ * than deciding "local" once at load and never asking again.
+ */
+export function detectComposer(): Promise<Composer> {
+  if (detecting) return detecting;
+  detecting = (async () => {
+    try {
+      const r = await fetch('/api/health', { signal: AbortSignal.timeout(2500) });
+      if (r.ok && (await r.json()).ai) return (composer = 'server');
+    } catch { /* no server: fine */ }
+    for (let i = 0; i < 40 && !(window as any).claude?.use; i++) await new Promise(res => setTimeout(res, 250));
+    try {
+      const c = (window as any).claude;
+      if (c?.use) { sample = await c.use('sample'); if (sample) return (composer = 'artifact'); }
+    } catch { /* not an artifact */ }
+    return (composer = 'local');
+  })();
+  return detecting;
+}
+/** wait briefly for detection to finish, so the note under the writing line tells the truth */
+export async function readyComposer(maxMs = 2000): Promise<Composer> {
+  await Promise.race([detectComposer(), new Promise(res => setTimeout(res, maxMs))]);
+  return composer;
 }
 export const currentComposer = () => composer;
 

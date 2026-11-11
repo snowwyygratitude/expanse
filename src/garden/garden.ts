@@ -11,7 +11,7 @@ import { RGB, TAU, WHITE, approach, clamp, css, hashStr, hex, lerp, mix, outBack
 import { BASE_EMOTIONS, EMO, EMOTIONS, Emotion, FEATURES, Feature, PAL_KEYS, RECIPES, Scene, World, composeWorld, pairKey, validateSpec } from '../world/scene';
 import { Keepsake, Save, persist } from '../store';
 import { Sound } from '../audio';
-import { composeWish, currentComposer } from '../ai';
+import { composeWish, readyComposer } from '../ai';
 import { KEEPSAKES, drawKeepsake, drawSeed, ell, glow, shine, star4 } from './art';
 import { BeliefChoice, HiddenKind, HiddenWorld, OWN_WORDS, SERIF, SkyView, text } from './overlays';
 import { CRISIS_LINE, CRISIS_TITLE, composeWorry } from '../worry';
@@ -463,7 +463,7 @@ export class Garden {
   }
   private async askWish() {
     if (this.wishBusy) return;
-    const local = currentComposer() === 'local';
+    const local = (await readyComposer()) === 'local';
     const words = await this.hooks.ask({ placeholder: 'describe a garden you wish for…', note: local ? 'your words stay on this device' : 'your words travel to Claude to shape the scene', action: 'whisper it', max: 240 });
     if (!words || !words.trim()) return;
     this.wishBusy = true;
@@ -478,7 +478,7 @@ export class Garden {
   /* ---------------- worries: set one down, unknot it, choose new words ---------------- */
   async askWorry() {
     if (this.worryBusy || this.choice) return;
-    const local = currentComposer() === 'local';
+    const local = (await readyComposer()) === 'local';
     const words = await this.hooks.ask({ placeholder: 'what is weighing on you?', note: local ? 'your words stay on this device' : 'your words travel to Claude so the garden can answer', action: 'set it down', max: 400, voice: true });
     if (!words || !words.trim()) return;
     this.save.worryUsed = true; this.guide = -1;

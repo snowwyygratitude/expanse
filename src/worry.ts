@@ -42,7 +42,7 @@ const THEMES: Theme[] = [
     reach: 'Name one thing you did today, however small. It counts.',
     reframes: ['I am allowed to be a work in progress.', 'I do not have to earn my place here.', 'The way I talk to myself can be gentler than this.'],
     emotions: { calm: 1, gratitude: 0.8 }, features: [['warmBlooms', 1], ['butterflies', 0.8], ['fireflies', 0.7], ['gifts', 0]] },
-  { re: /fail|presentation|exam|test|interview|deadline|mistake|mess(ed)? up|perform|boss|job|work|career|promotion|review|grade|school|project/,
+  { re: /fail|presentation|exam\b|\btest\b|interview|deadline|mistake|mess(ed)? up|perform|\bboss|job|work|career|promotion|review|grade|school|project/,
     name: 'The Unhurried Evening', ack: 'Of course this feels heavy. It matters to you, and that is why it is loud.',
     belief: 'If I get this wrong, it will prove I am not good enough.',
     known: 'The outcome has not happened yet. What exists right now is preparation, and a mind rehearsing the worst version.',
@@ -50,7 +50,7 @@ const THEMES: Theme[] = [
     reach: 'One small piece is within reach today. Fifteen minutes on the very next step is enough to begin.',
     reframes: ['My worth is not decided by one result.', 'I can be nervous and still do this well enough.', 'A mistake is something that happens, not something I am.'],
     emotions: { calm: 1, hope: 0.7 }, features: [['lanterns', 0.7], ['hopeSprouts', 0.9], ['rainbow', 0.2], ['fireflies', 0.5]] },
-  { re: /friend|partner|boyfriend|girlfriend|husband|wife|relationship|lonely|alone|reject|leave me|left me|ignor|text(ed)? back|likes? me|hates? me|judg|think of me|embarrass|awkward|family|mother|father|mom|dad/,
+  { re: /friend|partner|boyfriend|girlfriend|husband|wife|relationship|lonely|alone|reject|broke up with me|dumped|left me for|leave me|left me|ignor|texts?( me)? back|text(ed)?( me)? back|never (replies|answers|calls|writes)|ghost|likes? me|hates? me|judg|think of me|embarrass|awkward|family|mother|father|mom|dad/,
     name: 'The Shore of Kept Company', ack: 'Wanting to be close to people, and fearing it could go wrong, is one of the most human things there is.',
     belief: 'If people saw the real me, they would leave.',
     known: 'You know what was said and done. What they are thinking is a guess, and worry tends to guess the harshest answer.',
@@ -66,7 +66,7 @@ const THEMES: Theme[] = [
     reach: 'One number, one call, or one list is within reach today. Looking at it clearly often shrinks it a little.',
     reframes: ['My circumstances are not my character.', 'I can face one piece of this at a time.', 'Asking for help with this is a capable thing to do.'],
     emotions: { calm: 1, courage: 0.4, hope: 0.5 }, features: [['mountains', 0.3], ['path', 0.8], ['door', 0], ['mushrooms', 0], ['fireflies', 0.6], ['lanterns', 0.5]] },
-  { re: /health|sick|ill(ness)?|doctor|pain|symptom|diagnos|my body|sleep|insomnia|tired|hospital|results|surgery|panic|anxiety attack/,
+  { re: /health|sick|\bill\b|illness|unwell|doctor|pain|symptom|diagnos|my body|sleep|insomnia|tired|hospital|results|surgery|panic|anxiety attack|cancer|chemo|tumou?r|covid|flu\b|fever|injur|accident|recover|treatment|scan|dying|old age|getting old|vet\b/,
     name: 'The Resting Place', ack: 'Worry about a body, yours or someone else’s, is a way of caring. It is allowed to be scary.',
     belief: 'If I stop watching for danger, something terrible will happen.',
     known: 'What you know for certain is smaller than what you are afraid of. The rest is waiting, and waiting is the hard part.',
@@ -74,7 +74,7 @@ const THEMES: Theme[] = [
     reach: 'One caring thing is within reach. A question written down for a doctor, a glass of water, or rest.',
     reframes: ['I can care for my body without standing guard every minute.', 'Not knowing yet is not bad news.', 'I am allowed to rest while I wait.'],
     emotions: { calm: 1, hope: 0.5 }, features: [['mist', 0.6], ['moon', 0.8], ['koi', 1], ['lanterns', 0.6], ['fireflies', 0.5]] },
-  { re: /too much|overwhelm|busy|behind|everything|so many|keep up|stress|burn(ed|t)? ?out|exhaust|pressure|to-?do|no time/,
+  { re: /too much|so much|a lot to do|lots to do|can'?t cope|overwhelm|busy|behind|everything|so many|keep up|stress|burn(ed|t)? ?out|exhaust|pressure|to-?do|no time/,
     name: 'The Clearing', ack: 'That is a lot to be holding at once. No wonder it feels like too much.',
     belief: 'I have to hold everything together, and if I drop anything I have failed.',
     known: 'Everything is not due at the same moment, even though it arrives in your mind that way.',
@@ -91,6 +91,17 @@ const THEMES: Theme[] = [
     reframes: ['I can take the next step without seeing the whole road.', 'Not knowing is not the same as something being wrong.', 'I have handled uncertain things before.'],
     emotions: { calm: 1, curiosity: 0.45, hope: 0.5 }, features: [['path', 1], ['door', 0], ['mushrooms', 0.4], ['stars', 0.8], ['fireflies', 0.8], ['floaters', 0]] },
 ];
+const CONFLICT: Theme = {
+  re: /fight|fought|argu|angry with|mad at|upset with|yell|shout|said something|hurt (their|his|her|my) feelings|not speaking|falling out|fell out/,
+  name: 'The Mending Bridge', ack: 'Conflict with someone you care about stays with you. It hurts because the relationship matters.',
+  belief: 'If we fight, it means something between us is broken.',
+  known: 'One hard moment happened. It is part of the relationship, not the whole of it.',
+  friend: 'A friend would say: people who love each other disagree, and they find their way back.',
+  reach: 'One small step toward repair is within reach, when you are ready. Even a single honest sentence.',
+  reframes: ['Two people who care can still disagree.', 'One hard conversation is not the whole relationship.', 'I can take the first small step toward repair.'],
+  emotions: { calm: 1, hope: 0.6, gratitude: 0.4 }, features: [['path', 0.7], ['door', 0], ['mushrooms', 0], ['lanterns', 0.6], ['fireflies', 0.6], ['rainbow', 0.2]],
+};
+THEMES.push(CONFLICT);
 const DEFAULT: Theme = {
   re: /./, name: 'Where It Was Set Down', ack: 'Thank you for setting this down. It does not have to be solved to be put down for a while.',
   belief: 'If I keep worrying about this, I will be ready when it happens.',
@@ -103,8 +114,50 @@ const DEFAULT: Theme = {
 
 const clean = (s: unknown, max: number) => (typeof s === 'string' ? s.replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '');
 
+/* ---------- when the worry is about someone else ---------- */
+const WHO = /\b(my|our)\s+(best friend|friends?|mom|mum|mother|dad|father|parents?|sister|brother|sons?|daughters?|kids?|children|child|baby|partner|husband|wife|boyfriend|girlfriend|fianc[eé]e?|grand(?:ma|mother|pa|father|parents?)|aunt|uncle|cousin|dog|cat|pet|colleague|co-?worker|boss|teammate|roommate|neighbou?r|family)\b/i;
+type Words = Omit<Theme, 're'>;
+const OTHER_HEALTH = (mine: string, yours: string): Words => ({
+  name: 'The Watchful Lantern', ack: `Worrying about ${yours} is love with nowhere to go. Of course it feels heavy.`,
+  belief: `If I can't make this better for ${mine}, I'm not doing enough.`,
+  known: 'What you know is what is happening now. How it unfolds isn\'t written yet, and worry fills that gap with the hardest version.',
+  friend: 'A friend would say: you do not have to fix this to help. Being there is the help.',
+  reach: `One small kindness is within reach today: a message, a visit, or asking ${yours} what would actually help.`,
+  reframes: [`I can't control how this goes for ${mine}, but I can be there.`, `Caring for ${mine} includes caring for myself.`, 'I do not have to carry this worry alone.'],
+  emotions: { calm: 1, gratitude: 0.6, hope: 0.5 }, features: [['lanterns', 0.9], ['fireflies', 0.7], ['hopeSprouts', 0.6], ['moon', 0.6], ['rain', 0]],
+});
+const OTHER = (mine: string, yours: string, are = 'is'): Words => ({
+  name: 'The Shared Lantern', ack: `It is hard to watch ${yours} go through something. Caring this much says a lot about you.`,
+  belief: `It's my job to make sure ${mine} ${are} okay.`,
+  known: `You are walking beside ${yours}, not in their place. Some of this is yours to help with, and some of it isn't.`,
+  friend: `A friend would say: you can love ${yours} without carrying all of it for them.`,
+  reach: `One thing is within reach: let ${yours} know you are there, and ask what would help.`,
+  reframes: [`I can support ${mine} without fixing everything.`, 'Being there is enough, even when I cannot solve it.', 'My care counts, even from the side.'],
+  emotions: { calm: 1, gratitude: 0.7, hope: 0.4 }, features: [['lanterns', 0.8], ['fireflies', 0.6], ['butterflies', 0.5], ['koi', 0.6]],
+});
+
+/** score every theme by how much of it the words contain, instead of taking the first keyword that matches */
+function bestTheme(text: string): Theme | null {
+  let best: Theme | null = null, top = 0;
+  for (const th of THEMES) { const n = (text.match(new RegExp(th.re.source, 'gi')) ?? []).length; if (n > top) { top = n; best = th; } }
+  return best;
+}
+
 export function composeWorryLocally(worry: string): WorrySpec {
-  const w = worry.toLowerCase(), th = THEMES.find(t => t.re.test(w)) ?? DEFAULT;
+  // "sick and tired of" is weariness, not illness
+  const w = worry.toLowerCase().replace(/sick (and|&) tired( of)?|sick of|tired of|fed up/g, 'too much'), who = w.match(WHO);
+  const grief = THEMES[0];
+  let th: Words;
+  if (grief.re.test(w)) th = grief; // missing someone who is gone always reads as grief, whoever it is
+  else if (CONFLICT.re.test(w)) th = CONFLICT;
+  else if (who) {
+    // read the worry with "my friend" taken out, so the person it is about doesn't decide the topic
+    const mine = `${who[1]} ${who[2]}`, yours = `${who[1] === 'our' ? 'your' : 'your'} ${who[2]}`;
+    const topic = bestTheme(w.replace(WHO, ' '));
+    const health = THEMES.find(t => t.name === 'The Resting Place'), close = THEMES.find(t => t.name === 'The Shore of Kept Company');
+    // the closeness theme only fits when it is about how they treat *you* ("ignored me"), not about their own trouble
+    th = topic === health ? OTHER_HEALTH(mine, yours) : topic === close && /\b(me|us)\b/.test(w) ? close! : OTHER(mine, yours, /(s|children)$/.test(who[2]) ? 'are' : 'is');
+  } else th = bestTheme(w) ?? DEFAULT;
   return {
     worry, by: 'local', acknowledge: th.ack, belief: th.belief,
     petals: [th.known, th.friend, th.reach].map((text, i) => ({ label: PETAL_LABELS[i], text })),
