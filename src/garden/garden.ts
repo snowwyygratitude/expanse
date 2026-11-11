@@ -708,8 +708,11 @@ export class Garden {
   }
   private tap(x: number, y: number) {
     for (let i = this.hits.length - 1; i >= 0; i--) { const h = this.hits[i]; if (Math.hypot(x - h.x, y - h.y) < h.r) { h.fn(); return; } }
-    if (y > this.ledgeTop) { // a tap on the ledge itself calls every planted emotion seed back to its place
-      for (let i = this.planted.length - 1; i >= 0; i--) if (!this.custom(this.planted[i].kind)) this.unplant(i);
+    if (y > this.ledgeTop) { // a tap on a planted seed's empty spot calls that one seed home; the others stay
+      const gap = this.slots.length > 1 ? this.slots[1].x - this.slots[0].x : this.W;
+      const sl = this.slots.reduce((b, q) => (Math.abs(q.x - x) < Math.abs(b.x - x) ? q : b), this.slots[0]);
+      const i = sl && Math.abs(sl.x - x) < gap / 2 ? this.planted.findIndex(p => p.kind === sl.kind) : -1;
+      if (i >= 0) this.unplant(i);
       return;
     }
     const wx = this.wx(x), wy = this.wy(y), ground = wy > gy(wx) + 6;
