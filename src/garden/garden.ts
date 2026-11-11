@@ -14,14 +14,15 @@ import { Sound } from '../audio';
 import { composeWish, readyComposer } from '../ai';
 import { KEEPSAKES, drawKeepsake, drawSeed, ell, glow, shine, star4 } from './art';
 import { BeliefChoice, HiddenKind, HiddenWorld, OWN_WORDS, SERIF, SkyView, text } from './overlays';
-import { CRISIS_LINE, CRISIS_TITLE, composeWorry } from '../worry';
+import { CRISIS_LINE, CRISIS_TITLE, composeWorry, worryParts } from '../worry';
+import { Gesture, SPECS } from './gesture';
 
 type Ctx = CanvasRenderingContext2D;
 type SeedKind = Emotion | 'wish' | 'worry';
 
 export interface Hooks {
   caption(title: string, line?: string, opts?: { fresh?: boolean; hold?: number }): void;
-  ask(o: { placeholder: string; note: string; action: string; max: number; voice?: boolean }): Promise<string | null>;
+  ask(o: { placeholder: string; note: string; action: string; max: number; voice?: boolean; question?: string; chips?: string[] }): Promise<string | null>;
 }
 
 const WORLD_W = 1800, HORIZON = 560, CX = 900;
@@ -41,7 +42,7 @@ interface Flower { x: number; y: number; kind: 'joy' | 'blue' | 'warm' | 'hope';
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; c: RGB; r: number; grav: number; shape: 0 | 1 | 2; screen?: boolean; }
 interface Ring { x: number; y: number; t0: number; dur: number; max: number; c: RGB; flat: number; }
 interface Flight { kind: SeedKind; x0: number; y0: number; tx: number; ty: number; world: boolean; t: number; dur: number; arc: number; done: () => void; }
-interface Sprout { kind: SeedKind; x: number; y: number; t0: number; }
+interface Sprout { kind: SeedKind; x: number; y: number; t0: number; words?: string; }
 
 export class Garden {
   ctx: Ctx; W = 0; H = 0; dpr = 1; s = 1; vw = 0;
@@ -80,6 +81,8 @@ export class Garden {
   private hidden: HiddenWorld | null = null; private sky: SkyView | null = null;
   private auroraSprites: HTMLCanvasElement[] = [];
   private idle = 14; private guide = -1; /* firefly: -1 resting, else 0..1 along its flight */
+  /** the garden's answer to what was planted, and the quiet around it */
+  private gest: Gesture | null = null; private quietUntil = -9; private wordsT = 1e9; private hush = 1; private camGoal: number | null = null; private exploreT = -9;
   private autoT = -9; private hintT = 4; private last = 0; private lean: { scene: Scene; k: number } | null = null;
 
   constructor(private canvas: HTMLCanvasElement, public save: Save, public sound: Sound, private hooks: Hooks) {
@@ -89,12 +92,13 @@ export class Garden {
     this.applyLayout();
     // restore the world exactly as it was left
     this.planted = save.planted.filter(p => p.emo === 'wish' ? !!save.wish : p.emo === 'worry' ? !!save.worry && save.worry.stage !== 'held' : (EMOTIONS as readonly string[]).includes(p.emo)).slice(0, 2)
-      .map(p => ({ kind: p.emo, x: p.x, y: p.y, t0: -10 }));
+      .map(p => ({ kind: p.emo, x: p.x, y: p.y, t0: -10, words: (p as any).words }));
     this.world = this.compose();
     this.cur = JSON.parse(JSON.stringify(this.world.scene));
     this.resetWorldState();
     this.snapEntities();
     this.resize();
+    this.startGesture(true);
     window.addEventListener('resize', () => this.resize());
     canvas.addEventListener('pointerdown', e => this.down(e));
     canvas.addEventListener('pointermove', e => this.move(e));
@@ -206,7 +210,7 @@ export class Garden {
     this.layStones();
     const xy = (o: { x: number; y: number }) => [Math.round(o.x), Math.round(o.y)];
     this.save.layout = { v: 3, tree: xy(TREE), door: xy(DOOR), stone: xy(STONE), wish: xy(WISH), lake: xy(LAKE), flowers: this.flowers.map(xy), mushrooms: this.mushrooms.map(xy) };
-    this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y }));
+    this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y, words: p.words }));
     persist(this.save);
   }
   private applyLayout() {
@@ -270,7 +274,7 @@ export class Garden {
       const v = validateSpec(c.kind === 'wish' ? this.save.wish : this.save.worry?.scene);
       if (v) {
         const w = this.save.worry;
-        if (c.kind === 'worry' && w) { v.world.key = 'worry'; v.world.whisper = w.stage === 'done' ? '' : `${w.acknowledge} Touch a bud when you are ready.`; }
+        if (c.kind === 'worry' && w) { v.world.key = 'worry'; v.world.whisper = w.stage === 'done' ? '' : w.acknowledge; }
         return v.world;
       }
     }
@@ -299,22 +303,58 @@ export class Garden {
     this.wave = { x: origin.x, y: origin.y, t0: this.t };
     this.resetWorldState();
     this.rainBlooms.forEach(b => (b.th = 9)); // marked to fade
-    this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y }));
+    this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y, words: p.words }));
     const w = this.world;
     this.sound.setChord(w.emotions.length ? EMO[w.emotions[0]].chord : [0, 7, 12, 16]);
     if (w.emotions.length && announce) {
-      let fresh = false;
-      if (!w.custom && !this.save.discovered[w.key]) { this.save.discovered[w.key] = Date.now(); fresh = w.emotions.length === 2; }
-      this.hooks.caption(w.name, w.whisper, { fresh, hold: 9 });
-      if (prevKey !== w.key) this.sound.bloom();
+      if (!w.custom && !this.save.discovered[w.key]) this.save.discovered[w.key] = Date.now();
+      if (w.custom) { this.hooks.caption(w.name, w.whisper, { hold: 12 }); if (prevKey !== w.key) this.sound.bloom(); }
+      else this.hooks.caption('', ''); // nothing to read yet: first the garden answers, then it speaks
     } else if (!w.emotions.length) this.idleCaption();
+    this.startGesture(!announce);
     persist(this.save);
   }
+  /** one nearby thing responds to the feeling just planted (see gesture.ts) */
+  private startGesture(steady: boolean) {
+    const em = this.planted.filter(p => !this.custom(p.kind));
+    if (this.world.custom || !em.length) { this.gest = null; return; }
+    const key = em.length === 2 ? pairKey(em[0].kind as Emotion, em[1].kind as Emotion) : (em[0].kind as string);
+    const spec = SPECS[key]; if (!spec) { this.gest = null; return; }
+    const seed = em[em.length - 1], other = em.length === 2 ? em[0] : null;
+    const door = this.world.scene.f.door > 0.3;
+    const clear = (x: number, y: number) => !this.blocked(x, y, 6, door) && !inLake(x, y, 34) && x > this.cam.x + 50 && x < this.cam.x + this.vw - 50 && !(other && Math.abs(other.x - x) < 56 && Math.abs(other.y - y) < 44);
+    // the open side: never pressed up against the Resting Stone or the wish flower
+    const spots: [number, number][] = [[62, 2], [34, -46], [-34, -46], [-62, 2]];
+    const pick = spots.find(([dx, dy]) => clear(seed.x + dx, seed.y + dy)) ?? (seed.x < STONE.x + 160 ? spots[1] : spots[2]);
+    let side = pick[0] >= 0 ? 1 : -1, gx = seed.x + pick[0], gy = seed.y + pick[1];
+    if (other && Math.abs(other.x - seed.x) > 80 && Math.abs(other.x - seed.x) < 320) { // two feelings: the event happens between them
+      const mx = (other.x + seed.x) / 2, my = (other.y + seed.y) / 2 + 4;
+      if (!this.blocked(mx, my, 6, door) && !inLake(mx, my, 34)) { gx = mx; gy = my; side = seed.x > other.x ? 1 : -1; }
+    }
+    this.gest = new Gesture(key, spec, gx, gy, side, { x: seed.x, y: seed.y }, LAKE, c => this.sound.cue(c), this.rm, steady);
+    if (!steady) {
+      this.quietUntil = this.t + this.gest.revealAt + 7; this.wordsT = this.t + this.gest.revealAt + 6;
+      const f = this.gest.focus;
+      if (spec.focus === 'lake') this.camGoal = clamp(LAKE.x - this.vw * 0.56, 0, Math.max(0, WORLD_W - this.vw)); // bring the near bank and doorway into reach
+      else if (f.x < this.cam.x + this.vw * 0.18 || f.x > this.cam.x + this.vw * 0.82) this.camGoal = clamp(f.x - this.vw * 0.5, 0, Math.max(0, WORLD_W - this.vw));
+    } else this.wordsT = this.t;
+  }
+  /** invitations (the stone's and flower's words, the guide) wait while a feeling is being answered */
+  private invite() { return this.t < this.quietUntil ? 0 : clamp((this.t - this.quietUntil) / 1.5); }
+  private async askWords() {
+    const em = this.planted.filter(p => !this.custom(p.kind)), seed = em[em.length - 1]; if (!seed) return;
+    const words = await this.hooks.ask({ placeholder: 'a few words about this feeling…', note: 'kept only in this garden, on this device', action: 'leave them here', max: 140, voice: true });
+    if (!words || !words.trim()) return;
+    seed.words = words.trim(); this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y, words: p.words })); persist(this.save);
+    this.sound.cue('lantern'); this.burst(seed.x, seed.y - 50, [255, 240, 200], 10, 50, 1);
+    this.hooks.caption(`“${seed.words}”`, 'The garden is keeping this beside your seed.', { hold: 10 });
+  }
   idleCaption() {
+    const sub = this.gest?.spec.sub ?? this.world.whisper;
     const today = new Date().toDateString();
     const returning = this.save.lastVisit && this.save.lastVisit !== today;
     this.save.lastVisit = today; persist(this.save);
-    if (this.planted.length) this.hooks.caption(this.world.name, returning ? 'Your garden is ready for something new.' : this.world.whisper, { hold: 8 });
+    if (this.planted.length) this.hooks.caption(this.world.name, returning ? 'Your garden is ready for something new.' : sub, { hold: 10 });
     else this.hooks.caption(returning ? 'Your garden is ready for something new.' : 'What is happening in your world today?', this.save.everPlanted ? '' : 'carry a seed into the garden', { hold: 1e9 });
   }
 
@@ -350,9 +390,8 @@ export class Garden {
     this.flash = 1; this.flashC = c; this.sound.plant();
     this.burst(x, y, c, this.rm ? 8 : 34, 190); this.burst(x, y, WHITE, this.rm ? 3 : 12, 120, 1);
     this.rings.push({ x, y, t0: this.t, dur: 1.1, max: 150, c, flat: 0.32 });
-    for (const p of this.puffs) if (p.g > 0.5 && Math.abs(p.x - x) < 420) { p.gx = x + (p.x < x ? -46 : 46) + Math.random() * 20; p.gy = clamp(y + Math.random() * 30 - 15, 640, 840); p.wait = 0.3 + Math.random() * 0.6; }
     this.setWorld({ x, y });
-    if (!this.save.moveHint) { this.save.moveHint = true; setTimeout(() => { if (!this.hidden && !this.sky && !this.choice && !this.drag) this.hooks.caption('', 'Everything here can be moved. Press and hold a thing, then drag it.', { hold: 8 }); }, 12000); }
+    if (kind === 'worry') this.quietUntil = this.t + 6;
   }
   private unplant(i: number) {
     const p = this.planted.splice(i, 1)[0]; if (!p) return;
@@ -365,6 +404,7 @@ export class Garden {
   private goHome(p: Sprout) {
     this.burst(p.x, p.y - 10, this.seedColor(p.kind), 9);
     const w = this.save.worry;
+    p.words = undefined;
     if (p.kind === 'worry' && w) { if (w.stage === 'done') { this.save.worry = null; return; } w.stage = 'held'; }
     const h = this.slotOf(p.kind);
     this.fly(p.kind, this.sx(p.x), this.sy(p.y) - 30 * this.s, h.x, h.y, h.world, () => { });
@@ -376,7 +416,10 @@ export class Garden {
     setTimeout(() => {
       if (this.seedBusy(kind) || (kind === 'wish' && !this.save.wish) || (kind === 'worry' && this.save.worry?.stage !== 'held')) return;
       const h = this.slotOf(kind);
-      const [tx, ty] = this.freeSpot(this.cam.x + this.vw * (0.25 + Math.random() * 0.5), 690 + Math.random() * 90);
+      // a tapped seed lands near the middle of the view, so its answer happens where you are looking
+      const others = this.planted.filter(p => !this.custom(p.kind)).length, mid = this.cam.x + this.vw * 0.5;
+      const first = this.planted.find(p => !this.custom(p.kind));
+      const [tx, ty] = this.freeSpot(others && first ? first.x + this.vw * 0.15 : mid + (Math.random() - 0.5) * this.vw * 0.12, others && first ? first.y + (Math.random() - 0.5) * 20 : 735 + Math.random() * 40);
       this.fly(kind, h.world ? this.sx(h.x) : h.x, h.world ? this.sy(h.y) : h.y, tx, ty, true, () => this.plant(kind, tx, ty), 200);
     }, delay);
   }
@@ -490,7 +533,7 @@ export class Garden {
     if (out === 'crisis') { this.hooks.caption(CRISIS_TITLE, CRISIS_LINE, { hold: 120 }); return; }
     const i = this.planted.findIndex(p => p.kind === 'worry');
     if (i >= 0) { if (this.save.worry) this.save.worry.stage = 'done'; this.unplant(i); }
-    this.save.worry = { ...out, stage: 'held', opened: [false, false, false] }; persist(this.save);
+    this.save.worry = { ...out, stage: 'held', opened: [false, false, false], explored: false }; persist(this.save);
     this.burst(STONE.x, STONE.y - 14, [180, 170, 240], 22, 90, 1); this.sound.chime(0, 0.16, 1);
     this.hooks.caption('It has a shape now', 'You do not have to keep holding it. Carry the stone into the garden and set it down.', { hold: 14 });
   }
@@ -548,7 +591,7 @@ export class Garden {
       if (this.seedBusy('worry')) return;
       const h = this.slotOf('worry');
       drawSeed(ctx, 'worry', h.x, h.y + Math.sin(t * 1.5) * 2.5, 21, t, 1.5);
-      label('carry it into the garden', 0.95);
+      label('carry it into the garden', 0.95 * Math.max(this.invite(), this.planted.length ? 0 : 1));
       if (!this.rm) { // a ghost of the stone shows the gesture, as the seeds do
         const q = ((t % 5) - 1.6) / 2.6;
         if (q > 0 && q < 1) { const e = Math.sin(q * Math.PI), gx = h.x - 150 * e, gyv = h.y - 20 * e - Math.sin(e * Math.PI) * 46; ctx.globalAlpha = 0.42 * Math.sin(q * Math.PI); drawSeed(ctx, 'worry', gx, gyv, 19, t); ctx.globalAlpha = 1; }
@@ -556,7 +599,7 @@ export class Garden {
       return;
     }
     if (away) return;
-    label(this.worryBusy ? 'listening…' : 'set down a worry', 0.95);
+    label(this.worryBusy ? 'listening…' : 'set down a worry', 0.95 * this.invite());
     if (!this.worryBusy) this.lateHit(x, top, 58, () => { this.sound.chime(0, 0.12, 1); void this.askWorry(); });
   }
   /** the planted worry: a stone wrapped in bramble, with three buds that open into gentler thoughts */
@@ -573,8 +616,10 @@ export class Garden {
       return;
     }
     // bramble and buds
-    BUDS.forEach(([bx, by], i) => {
-      const open = w.opened[i], X = p.x + bx * d * g, Y = p.y + by * d * g, age = t - this.budT[i], o = open ? outBack(clamp(age / 0.7)) : 0;
+    // buds grow only if the person chooses to explore; setting the stone down is enough on its own
+    const explored = w.explored !== false, bg = explored ? outBack((t - Math.max(p.t0, this.exploreT)) / 0.9) : 0;
+    if (explored) BUDS.forEach(([bx, by], i) => {
+      const open = w.opened[i], X = p.x + bx * d * bg, Y = p.y + by * d * bg, age = t - this.budT[i], o = open ? outBack(clamp(age / 0.7)) : 0;
       ctx.strokeStyle = open ? '#7fcf9f' : '#3a3358'; ctx.lineWidth = 2.6 * d; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(p.x + bx * 0.3 * d, sy0); ctx.quadraticCurveTo(p.x + bx * 1.25 * d, p.y + by * 0.35 * d, X, Y); ctx.stroke();
       if (!open) { ctx.lineWidth = 1.4 * d; ctx.beginPath(); for (const q of [0.35, 0.65]) { const tx = p.x + bx * (0.3 + 0.9 * q) * d, ty = sy0 + (Y - sy0) * q; ctx.moveTo(tx, ty); ctx.lineTo(tx + (bx >= 0 ? 6 : -6) * d, ty - 5 * d); } ctx.stroke(); }
@@ -604,6 +649,29 @@ export class Garden {
       ctx.strokeStyle = css(warm, 0.4 + 0.4 * pu); ctx.lineWidth = 1.5; ell(ctx, p.x, sy0, (28 + 6 * pu) * d, (19 + 4 * pu) * d); ctx.stroke();
       this.lateHit(p.x, sy0, 28, () => this.openChoice());
     }
+    if (!explored && this.t > this.quietUntil && !this.worryBusy) { // an optional next step, offered quietly
+      const a = clamp((this.t - this.quietUntil) / 2) * 0.7, ly = sy0 - 40 * d;
+      ctx.save(); ctx.translate(p.x, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, 96, [10, 14, 40], 0.5 * a / 0.7); ctx.restore();
+      text(ctx, 'explore this feeling', p.x, ly, 13 / this.s, a, { italic: true });
+      if (a > 0.2) this.lateHit(p.x, ly, 36, () => { this.sound.chime(1); void this.exploreWorry(); });
+    }
+  }
+  /** begins with one open question, and lets the person's own answer lead */
+  private async exploreWorry() {
+    const w = this.save.worry; if (!w || this.worryBusy) return;
+    const local = (await readyComposer()) === 'local';
+    const part = await this.hooks.ask({ question: 'What part of this is weighing on you?', placeholder: 'or say it in your own words…', chips: worryParts(w.worry), note: local ? 'your words stay on this device' : 'your words travel to Claude so the garden can answer', action: 'tell the garden', max: 240, voice: true });
+    if (!part || !part.trim()) return;
+    this.worryBusy = true;
+    this.hooks.caption('', 'The garden is listening…', { hold: 60 });
+    const out = await composeWorry(w.worry, part.trim());
+    this.worryBusy = false;
+    if (out === 'crisis') { this.hooks.caption(CRISIS_TITLE, CRISIS_LINE, { hold: 120 }); return; }
+    const cur = this.save.worry; if (!cur) return;
+    Object.assign(cur, { acknowledge: out.acknowledge, belief: out.belief, petals: out.petals, reframes: out.reframes, part: part.trim(), explored: true, opened: [false, false, false] });
+    persist(this.save);
+    this.exploreT = this.t; this.budT = [-9, -9, -9]; this.sound.cue('sprout');
+    this.hooks.caption(`“${part.trim()}”`, 'Three buds have formed. Touch one when you are ready.', { hold: 14 });
   }
   private async askMemory() {
     const words = await this.hooks.ask({ placeholder: 'a memory, a thought, or nothing at all', note: 'kept only in this garden, on this device', action: 'let it rise', max: 200 });
@@ -637,6 +705,7 @@ export class Garden {
   private pos(e: PointerEvent) { const r = this.canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   private down(e: PointerEvent) {
     if (this.drag) return;
+    this.camGoal = null;
     this.idle = 0;
     if (!this.sound.audible && !this.save.soundOff) { this.sound.start(); this.autoT = this.t; this.sound.setChord(this.world.emotions.length ? EMO[this.world.emotions[0]].chord : [0, 7, 12, 16]); }
     const { x, y } = this.pos(e);
@@ -781,7 +850,17 @@ export class Garden {
     if (this.drag?.type === 'seed' || this.drag?.type === 'move' || (this.drag?.type === 'keep' && this.drag.moved)) { // carry something to the edge and the world scrolls
       const e = this.drag.x / this.W; if (e < 0.1) this.cam.x -= 380 * dt * (1 - e / 0.1); if (e > 0.9) this.cam.x += 380 * dt * ((e - 0.9) / 0.1);
     }
+    if (this.camGoal !== null && !this.drag) { this.cam.x = approach(this.cam.x, this.camGoal, 2.2, dt); this.cam.vx = 0; if (Math.abs(this.cam.x - this.camGoal) < 0.5) this.camGoal = null; }
     this.cam.x = clamp(this.cam.x, 0, maxX);
+    // the answer to a planted feeling, then its two lines of words
+    if (this.gest) {
+      this.gest.update(dt);
+      if (!this.gest.revealed && this.gest.age >= this.gest.revealAt) {
+        this.gest.revealed = true;
+        if (!this.hidden && !this.sky && !this.choice) { this.hooks.caption(this.world.name, this.gest.spec.sub, { hold: 14 }); this.sound.cue('reveal'); }
+      }
+    }
+    this.hush = approach(this.hush, this.gest && this.gest.age < this.gest.revealAt + 3 ? 0.3 : 1, 1.2, dt); // other sparkle steps back
     // creatures
     const np = Math.round(f.puffs * 4);
     this.puffs.forEach((p, i) => {
@@ -821,7 +900,7 @@ export class Garden {
     this.hintT -= dt;
     // the guide: until someone has used the resting stone, a firefly shows the way after a quiet while
     this.idle += dt;
-    const quiet = !this.save.worryUsed && !this.rm && !this.drag && !this.hidden && !this.sky && !this.choice && !this.worryBusy && !this.save.worry;
+    const quiet = !this.save.worryUsed && !this.gest && this.t > this.quietUntil && !this.rm && !this.drag && !this.hidden && !this.sky && !this.choice && !this.worryBusy && !this.save.worry;
     if (this.guide < 0) { if (quiet && this.idle > 20) { this.guide = 0; this.idle = 0; } }
     else { this.guide += dt / 9; if (this.guide >= 1 || !quiet) this.guide = -1; }
     this.hidden?.update(dt); if (this.hidden?.finished) this.hidden = null;
@@ -864,9 +943,9 @@ export class Garden {
       ctx.fillStyle = css(mix(c, WHITE, 0.6), f.sun); ell(ctx, sunX, sunY, 44, 44); ctx.fill();
     }
     if (f.moon > 0.02) {
-      shine(ctx, 1105, 200, 240, [220, 225, 255], 0.5 * f.moon);
-      ctx.fillStyle = css([246, 243, 226], f.moon); ell(ctx, 1105, 200, 36, 36); ctx.fill();
-      ctx.fillStyle = css(mix(P.skyTop, P.skyMid, 0.35), f.moon * 0.92); ell(ctx, 1123, 190, 31, 31); ctx.fill();
+      shine(ctx, 1105, 300, 240, [220, 225, 255], 0.5 * f.moon);
+      ctx.fillStyle = css([246, 243, 226], f.moon); ell(ctx, 1105, 300, 36, 36); ctx.fill();
+      ctx.fillStyle = css(mix(P.skyTop, P.skyMid, 0.35), f.moon * 0.92); ell(ctx, 1123, 290, 31, 31); ctx.fill();
     }
     if (f.rainbow > 0.02) {
       this.layer(0.12); ctx.globalCompositeOperation = 'screen'; ctx.lineWidth = 11;
@@ -935,6 +1014,15 @@ export class Garden {
       ctx.fillStyle = css(mix(WHITE, P.light, 0.3), 0.55 * m); ctx.beginPath();
       this.mfar.forEach((h, i) => { if (h > 0.6) { const x = i * 20, y = HORIZON - 30 * m - h * 330 * m; ctx.moveTo(x - 20, y + 20 * m + (h - 0.6) * 120 * m); ctx.lineTo(x, y); ctx.lineTo(x + 20, y + 20 * m + (h - 0.6) * 90 * m); ctx.lineTo(x + 6, y + 14 * m); ctx.lineTo(x - 5, y + 24 * m); } });
       ctx.fill();
+      if (f.ridgeGlow > 0.02) { // the ridge glows red
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+        for (const [w, al] of [[16, 0.08], [7, 0.2], [2.4, 0.55]]) {
+          ctx.strokeStyle = css([255, 92, 56], al * f.ridgeGlow * (0.85 + 0.15 * Math.sin(t * 0.6))); ctx.lineWidth = w; ctx.beginPath();
+          this.mfar.forEach((h, i) => { const x = i * 20, y = HORIZON - 30 * m - h * 330 * m; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
     }
     if (m > 0.01 || f.passage > 0.01) ridge(this.mnear, 0.5, 14 * m, 200 * m, mix(mix(P.skyTop, P.foliage, 0.35), P.light, 0.12), mix(P.foliage, P.skyLow, 0.5), 150 * f.passage);
     if (f.passage > 0.03) { // the lit way into the mountain
@@ -1022,7 +1110,7 @@ export class Garden {
     if (k > 0.3) for (const q of [-0.6, 0, 0.6]) this.grab(LAKE, LAKE.x + q * rx, LAKE.y, ry * 0.95, 'lake');
     // stepping stones
     const stone = (x: number, y: number, g: number, i: number) => {
-      if (g < 0.02 || this.blocked(x, y, -8, false)) return; const d = (0.55 + (y - 560) / 420) * outBack(g);
+      if (g < 0.02 || this.blocked(x, y, -8, false) || (this.gest && Math.abs(x - this.gest.x) < 70 && Math.abs(y - this.gest.y) < 34)) return; const d = (0.55 + (y - 560) / 420) * outBack(g);
       ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.4); shine(ctx, 0, 0, 40 * d, P.light, 0.5 * g * (0.7 + 0.3 * Math.sin(t * 2 - i * 0.6))); ctx.restore();
       ctx.fillStyle = css(mix([205, 205, 225], P.light, 0.35), g); ell(ctx, x, y, 17 * d, 6.5 * d); ctx.fill();
       ctx.fillStyle = css(WHITE, 0.4 * g); ell(ctx, x - 3 * d, y - 1.5 * d, 9 * d, 2.6 * d); ctx.fill();
@@ -1102,7 +1190,8 @@ export class Garden {
       drawKeepsake(ctx, k.kind, k.x, k.y - lift, sc, t + k.x, k.data);
     }]);
     this.planted.forEach((p, i) => list.push([p.y, () => (p.kind === 'worry' ? this.paintKnot(p) : this.paintSprout(p, i))]));
-    if (!this.glimmer.found) list.push([this.glimmer.y, () => {
+    if (this.gest) { const g = this.gest; list.push([g.y + 1, () => g.paint(ctx, t, this.cur.pal.light, this.hush)]); }
+    if (!this.glimmer.found && this.t > this.quietUntil) list.push([this.glimmer.y, () => {
       const gl = this.glimmer, tw = Math.max(0, Math.sin(t * 1.9 + gl.x)) ** 5;
       shine(ctx, gl.x, gl.y - 8, 18 + 22 * tw, WHITE, 0.25 + 0.7 * tw);
       ctx.fillStyle = css(WHITE, 0.35 + 0.65 * tw); star4(ctx, gl.x, gl.y - 8, 3 + 7 * tw, t * 0.6, 0.25); ctx.fill();
@@ -1200,8 +1289,9 @@ export class Garden {
     const said = busy ? 'listening…' : this.save.wish ? (this.seedBusy('wish') ? '' : 'plant your wish') : 'whisper a wish';
     if (said) {
       const ly = HY - 62;
-      ctx.save(); ctx.translate(HX + 4, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, said.length * 5.2 + 34, [10, 14, 40], 0.55); ctx.restore();
-      text(ctx, said, HX + 4, ly, 14.5 / this.s, 0.95, { italic: true });
+      const inv = this.invite();
+      ctx.save(); ctx.translate(HX + 4, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, said.length * 5.2 + 34, [10, 14, 40], 0.55 * inv); ctx.restore();
+      text(ctx, said, HX + 4, ly, 14.5 / this.s, 0.95 * inv, { italic: true });
       if (!busy && !this.save.wish) this.lateHit(HX + 4, ly, 34, () => { this.sound.chime(1); void this.askWish(); });
     }
     this.grab(WISH, HX + 6, HY - 14, 40, 'wish'); this.grab(WISH, x, y - 24, 26, 'wish');
@@ -1235,6 +1325,18 @@ export class Garden {
     ctx.strokeStyle = css(mix(c, WHITE, 0.35)); ctx.lineWidth = 2.6 * d; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.quadraticCurveTo(p.x + 5 * d, p.y - h * 0.5, p.x, p.y - h); ctx.stroke();
     ctx.fillStyle = css(mix(c, WHITE, 0.25)); ell(ctx, p.x - 8 * d * g, p.y - h * 0.55, 8 * d * g, 3.2 * d * g, 0.55); ctx.fill(); ell(ctx, p.x + 8 * d * g, p.y - h * 0.7, 8 * d * g, 3.2 * d * g, -0.55); ctx.fill();
     drawSeed(ctx, p.kind, p.x, p.y - h - 9 * d + Math.sin(t * 2 + i) * 2, 8.5 * d * g, t, pulse);
+    const newest = this.planted.filter(q => !this.custom(q.kind)).slice(-1)[0] === p;
+    if (p.words) { // the person's words, kept as a small glowing note beside the seed
+      const nx = p.x - (this.gest?.x && this.gest.x > p.x ? 18 : -18) * d, ny = p.y - 50 * d + Math.sin(t * 1.2 + i) * 2;
+      shine(ctx, nx, ny, 16 * d, [255, 236, 190], 0.6);
+      ctx.fillStyle = '#fff6dc'; ctx.save(); ctx.translate(nx, ny); ctx.rotate(-0.15); ctx.fillRect(-6 * d, -4 * d, 12 * d, 8 * d); ctx.strokeStyle = 'rgba(160,120,80,.55)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-4 * d, -1 * d); ctx.lineTo(4 * d, -1 * d); ctx.moveTo(-4 * d, 1.5 * d); ctx.lineTo(2 * d, 1.5 * d); ctx.stroke(); ctx.restore();
+      this.lateHit(nx, ny, 22, () => { this.sound.chime(2); this.hooks.caption(`“${p.words}”`, 'Kept beside your seed.', { hold: 8 }); });
+    } else if (newest && this.t > this.wordsT && !this.drag) {
+      const a = clamp((this.t - this.wordsT) / 2) * 0.62, ox = this.gest && this.gest.x > p.x ? -1 : 1, lx = p.x + ox * 8 * d, ly = p.y - 72 * d;
+      ctx.save(); ctx.translate(lx, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, 80, [10, 14, 40], 0.45 * a / 0.62); ctx.restore();
+      text(ctx, 'add a few words', lx, ly, 12.5 / this.s, a, { italic: true });
+      if (a > 0.2) this.lateHit(lx, ly, 34, () => { this.sound.chime(1); void this.askWords(); });
+    }
   }
   private paintLantern(x: number, y: number, sc: number, a: number, boost: number) {
     const { ctx } = this;
@@ -1263,7 +1365,7 @@ export class Garden {
     }
     // the thread of light between two planted seeds: this is the mix
     if (this.planted.length === 2) {
-      const [a, b] = this.planted, k = clamp((t - Math.max(a.t0, b.t0)) / 1.2), ay = a.y - 40, by = b.y - 40, mx = (a.x + b.x) / 2, my = Math.min(ay, by) - 70 - Math.abs(a.x - b.x) * 0.18;
+      const [a, b] = this.planted, k = clamp((t - Math.max(a.t0, b.t0)) / 1.2) * this.invite(), /* waits until the garden's answer has registered */ ay = a.y - 40, by = b.y - 40, mx = (a.x + b.x) / 2, my = Math.min(ay, by) - 70 - Math.abs(a.x - b.x) * 0.18;
       const ca = this.seedColor(a.kind), cb = this.seedColor(b.kind);
       ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = css(mix(mix(ca, cb, 0.5), WHITE, 0.4), 0.28 * k); ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(a.x, ay); ctx.quadraticCurveTo(mx, my, b.x, by); ctx.stroke(); ctx.globalCompositeOperation = 'source-over';
@@ -1293,8 +1395,8 @@ export class Garden {
     for (const fl of this.floaters) if (fl.g > 0.03) {
       const x = fl.x + Math.sin(t * 0.4 + fl.ph) * 16, y = fl.y + Math.sin(t * 0.7 + fl.ph) * 12 + (1 - smooth(fl.g)) * 60, rot = t * 0.4 + fl.ph + (1 - fl.spin) ** 2 * 0 + fl.spin * fl.spin * 14;
       const c = mix(P.light, WHITE, 0.55);
-      shine(ctx, x, y, 44 + fl.spin * 30, P.light, 0.45 * fl.g + fl.spin * 0.4);
-      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(rot) * 0.5 + fl.spin * 6); ctx.globalAlpha = smooth(fl.g); ctx.strokeStyle = css(c); ctx.fillStyle = css(c, 0.25); ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      shine(ctx, x, y, 44 + fl.spin * 30, P.light, (0.45 * fl.g + fl.spin * 0.4) * this.hush);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(rot) * 0.5 + fl.spin * 6); ctx.globalAlpha = smooth(fl.g) * (0.35 + 0.65 * this.hush); ctx.strokeStyle = css(c); ctx.fillStyle = css(c, 0.25); ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
       ctx.beginPath();
       switch (fl.kind) {
         case 0: ctx.arc(0, -8, 6, 0, TAU); ctx.moveTo(0, -2); ctx.lineTo(0, 14); ctx.moveTo(0, 9); ctx.lineTo(5, 9); ctx.moveTo(0, 14); ctx.lineTo(6, 14); break; // key
@@ -1317,11 +1419,12 @@ export class Garden {
       ctx.fillStyle = 'rgba(60,40,60,.8)'; ell(ctx, b.x, b.y, 1, 5); ctx.fill();
       this.hit(b.x, b.y, 18, () => { b.fx += (Math.random() - 0.5) * 240; b.fy -= 120 + Math.random() * 80; this.burst(b.x, b.y, b.c, 6, 50, 1); this.sound.chime(4, 0.1, 4); });
     }
-    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = this.hush;
     if (f.fireflies > 0.03) { const n = Math.round((this.rm ? 12 : this.fireflies.length) * f.fireflies); for (let i = 0; i < n; i++) { const [x, y, ph, k] = this.fireflies[i]; glow(ctx, x + Math.sin(t * 0.5 * k + ph) * 40, y + Math.sin(t * 0.8 * k + ph * 2) * 22, 11, [225, 255, 150], 0.25 + 0.75 * Math.max(0, Math.sin(t * 1.6 * k + ph))); } }
     if (f.motes > 0.03) { const n = Math.round((this.rm ? 12 : this.motes.length) * f.motes); for (let i = 0; i < n; i++) { const [x, y, ph, k] = this.motes[i]; const yy = 960 - ((960 - y + t * 9 * k) % 700); glow(ctx, x + Math.sin(t * 0.3 + ph) * 26, yy, 6 * k, P.light, 0.5 * Math.sin(((960 - yy) / 700) * Math.PI)); } }
     ctx.globalCompositeOperation = 'source-over';
     if (f.petals > 0.03 && !this.rm) { const n = Math.round(this.petals.length * f.petals); for (let i = 0; i < n; i++) { const [u, v, ph, k] = this.petals[i]; const y = 250 + ((v + t * 0.045 * k) % 1) * 700, x = this.cam.x + ((u + Math.sin(t * 0.4 + ph) * 0.03 + t * 0.012) % 1) * (this.vw + 60) - 30; ctx.fillStyle = css(BLOOM_COLORS[i % 4], 0.8); ell(ctx, x, y, 5, 2.4, t * k + ph); ctx.fill(); } }
+    ctx.globalAlpha = 1;
     // particles
     for (const p of this.particles) {
       const a = 1 - p.life / p.max;
@@ -1350,7 +1453,18 @@ export class Garden {
     this.slots.forEach((sl, i) => {
       ctx.fillStyle = 'rgba(6,8,24,.5)'; ell(ctx, sl.x, sl.y + r * 0.85, r * 1.05, r * 0.36); ctx.fill();
       const name = EMO[sl.kind].name.toLowerCase(), busy = this.seedBusy(sl.kind);
-      text(ctx, name, sl.x, sl.y + r + 17, Math.max(10, Math.min(12.5, r * 0.58)), busy ? 0.4 : 0.82, { spacing: 0.6 });
+      const inGarden = this.planted.some(p => p.kind === sl.kind);
+      text(ctx, name, sl.x, sl.y + r + 17, Math.max(10, Math.min(12.5, r * 0.58)), inGarden ? 0.98 : busy ? 0.4 : 0.82, { spacing: 0.6 });
+      if (inGarden) { // chosen: its symbol stays, ringed, with a small sprout to say it is in the garden
+        const col = EMO[sl.kind].color, pu = 0.85 + 0.15 * Math.sin(t * 1.6 + i);
+        shine(ctx, sl.x, sl.y, r * 2.1, col, 0.32 * pu);
+        ctx.strokeStyle = css(mix(col, WHITE, 0.4), 0.9); ctx.lineWidth = 2; ell(ctx, sl.x, sl.y, r * 1.28, r * 1.28); ctx.stroke();
+        drawSeed(ctx, sl.kind, sl.x, sl.y, r * 0.8, t + i, 0.55);
+        const spx = sl.x + r * 0.95, spy = sl.y - r * 0.95;
+        ctx.strokeStyle = '#7fd68f'; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(spx, spy + 3); ctx.lineTo(spx, spy - 4); ctx.stroke();
+        ctx.fillStyle = '#9fe6a8'; ell(ctx, spx - 3, spy - 4.5, 3.4, 1.7, 0.5); ctx.fill(); ell(ctx, spx + 3, spy - 5.5, 3.4, 1.7, -0.5); ctx.fill();
+        return;
+      }
       if (busy) { ctx.strokeStyle = css(EMO[sl.kind].color, 0.3); ctx.lineWidth = 1.2; ctx.setLineDash([3, 5]); ell(ctx, sl.x, sl.y, r * 0.8, r * 0.8); ctx.stroke(); ctx.setLineDash([]); return; }
       const bob = Math.sin(t * 1.7 + i * 1.1) * (never ? 3 : 1.6);
       drawSeed(ctx, sl.kind, sl.x, sl.y + bob, r, t + i);
@@ -1391,7 +1505,7 @@ export class Garden {
         ctx.fillStyle = css(mix([150, 130, 110], P.skyTop, 0.2)); ctx.fillRect(cx - 9, cy - 9, 18, 3);
         for (let j = 0; j < 3; j++) { ctx.save(); ctx.translate(cx + (j - 1) * 6, cy - 6); ctx.rotate(Math.sin(t * (on ? 3 : 1) + j * 1.4) * (on ? 0.2 : 0.05)); ctx.fillStyle = on ? ['#a8e6df', '#e0fbf6', '#8fd0d8'][j] : 'rgba(210,215,230,.55)'; ctx.fillRect(-1.5, 2, 3, 11 + j * 3); ctx.restore(); }
       }
-      text(ctx, label, cx, cy + 30, 10, 0.72, { spacing: 1.2 });
+      text(ctx, label, cx, cy + 30, 10, 0.72 * (0.35 + 0.65 * this.invite()), { spacing: 1.2 });
       this.hits.push({ x: cx, y: cy + 8, r: 26, fn });
     });
   }

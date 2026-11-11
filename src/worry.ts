@@ -74,7 +74,7 @@ const THEMES: Theme[] = [
     reach: 'One caring thing is within reach. A question written down for a doctor, a glass of water, or rest.',
     reframes: ['I can care for my body without standing guard every minute.', 'Not knowing yet is not bad news.', 'I am allowed to rest while I wait.'],
     emotions: { calm: 1, hope: 0.5 }, features: [['mist', 0.6], ['moon', 0.8], ['koi', 1], ['lanterns', 0.6], ['fireflies', 0.5]] },
-  { re: /too much|so much|a lot to do|lots to do|can'?t cope|overwhelm|busy|behind|everything|so many|keep up|stress|burn(ed|t)? ?out|exhaust|pressure|to-?do|no time/,
+  { re: /prepar|get ready|ready in time|not ready|too much|so much|a lot to do|lots to do|can'?t cope|overwhelm|busy|behind|everything|so many|keep up|stress|burn(ed|t)? ?out|exhaust|pressure|to-?do|no time/,
     name: 'The Clearing', ack: 'That is a lot to be holding at once. No wonder it feels like too much.',
     belief: 'I have to hold everything together, and if I drop anything I have failed.',
     known: 'Everything is not due at the same moment, even though it arrives in your mind that way.',
@@ -82,7 +82,7 @@ const THEMES: Theme[] = [
     reach: 'Pick the one thing that would make today lighter. The rest can wait its turn.',
     reframes: ['I can do one thing at a time.', 'Resting is part of the work, not a failure of it.', 'Not everything has to be held by me.'],
     emotions: { calm: 1, joy: 0.3 }, features: [['mist', 0.4], ['petals', 0.6], ['koi', 0.8], ['clouds', 0.2], ['puffs', 0.7]] },
-  { re: /future|what if|uncertain|do(n'?t| not) know|decision|decide|choice|chang|mov(e|ing)|next year|plan|unknown|lost|direction|purpose|scared|afraid/,
+  { re: /turn out|how it (will )?go|outcome|future|what if|uncertain|do(n'?t| not) know|decision|decide|choice|chang|mov(e|ing)|next year|plan|unknown|lost|direction|purpose|scared|afraid/,
     name: 'The Path One Stone Long', ack: 'Not knowing is uncomfortable. The mind tries to help by imagining every ending at once.',
     belief: 'I need to know how it turns out before I can be okay.',
     known: 'Today is known. The future you are picturing is one of many drafts, and none of them is written yet.',
@@ -102,6 +102,37 @@ const CONFLICT: Theme = {
   emotions: { calm: 1, hope: 0.6, gratitude: 0.4 }, features: [['path', 0.7], ['door', 0], ['mushrooms', 0], ['lanterns', 0.6], ['fireflies', 0.6], ['rainbow', 0.2]],
 };
 THEMES.push(CONFLICT);
+/** being looked at: presentations, crowds, the fear of being judged */
+const JUDGED: Theme = {
+  re: /being seen|seen by|look(ed)? at|in front of|judg|embarrass|look (stupid|foolish|silly)|laugh at|what (they|people|others|everyone) (will )?think|audience|stage|blush/,
+  name: 'The Kind Audience', ack: 'Being looked at can feel like standing in a bright light. Of course it makes you want to hide a little.',
+  belief: 'If they see me stumble, they will think less of me.',
+  known: 'You know how it feels from the inside. What they will think is a guess, and most people are busy with their own nerves.',
+  friend: 'A friend would say: the people who matter are rooting for you, not grading you.',
+  reach: 'One thing is within reach: find one friendly face, and speak to them.',
+  reframes: ['People are kinder watchers than my nerves say.', 'I can be seen and still be okay.', 'One stumble is not what people remember.'],
+  emotions: { calm: 1, hope: 0.6, gratitude: 0.3 }, features: [['lanterns', 0.8], ['fireflies', 0.6], ['puffs', 0.8], ['rain', 0]],
+};
+THEMES.push(JUDGED);
+const OTHER_PART = /something else/i;
+
+/** what someone might choose from when asked "What part of this is weighing on you?" */
+const PARTS: Record<string, string[]> = {
+  'The Lantern Water': ['missing them', 'things left unsaid', 'going on without them'],
+  'The Garden As It Is': ['how I see myself', 'what others might think', 'something I did'],
+  'The Unhurried Evening': ['the preparation', 'being seen', 'how it will turn out'],
+  'The Shore of Kept Company': ['what they think of me', 'losing them', 'not knowing where I stand'],
+  'The Even Ground': ['the next bill', 'feeling behind', 'what it says about me'],
+  'The Resting Place': ['not knowing yet', 'how my body feels', 'what might change'],
+  'The Clearing': ['how much there is', 'where to start', 'never getting a break'],
+  'The Path One Stone Long': ['making the wrong choice', 'not knowing yet', 'being left behind'],
+  'The Mending Bridge': ['what was said', 'whether we will be okay', 'my part in it'],
+  'The Watchful Lantern': ['not being able to help', 'not knowing what happens', 'how they are feeling'],
+  'The Shared Lantern': ['not being able to fix it', 'how they are feeling', 'what it means for us'],
+  'The Kind Audience': ['what people will think', 'making a mistake in front of them', 'being looked at'],
+  'Where It Was Set Down': ['what might happen', 'how it makes me feel', 'something I cannot name'],
+};
+export function worryParts(worry: string): string[] { return [...(PARTS[pickTheme(worry).name] ?? PARTS['Where It Was Set Down']), 'something else entirely']; }
 const DEFAULT: Theme = {
   re: /./, name: 'Where It Was Set Down', ack: 'Thank you for setting this down. It does not have to be solved to be put down for a while.',
   belief: 'If I keep worrying about this, I will be ready when it happens.',
@@ -143,7 +174,8 @@ function bestTheme(text: string): Theme | null {
   return best;
 }
 
-export function composeWorryLocally(worry: string): WorrySpec {
+/** read a worry the way the garden's own words understand it */
+function pickTheme(worry: string): Words {
   // "sick and tired of" is weariness, not illness
   const w = worry.toLowerCase().replace(/sick (and|&) tired( of)?|sick of|tired of|fed up/g, 'too much'), who = w.match(WHO);
   const grief = THEMES[0];
@@ -158,6 +190,13 @@ export function composeWorryLocally(worry: string): WorrySpec {
     // the closeness theme only fits when it is about how they treat *you* ("ignored me"), not about their own trouble
     th = topic === health ? OTHER_HEALTH(mine, yours) : topic === close && /\b(me|us)\b/.test(w) ? close! : OTHER(mine, yours, /(s|children)$/.test(who[2]) ? 'are' : 'is');
   } else th = bestTheme(w) ?? DEFAULT;
+  return th;
+}
+
+/** the garden's own words; when the person has said which part weighs most, that part leads */
+export function composeWorryLocally(worry: string, part?: string): WorrySpec {
+  const base = pickTheme(worry), p = part?.trim().toLowerCase();
+  const th: Words = p && !OTHER_PART.test(p) ? (bestTheme(p.replace(/sick (and|&) tired( of)?|sick of|tired of|fed up/g, 'too much')) ?? base) : base;
   return {
     worry, by: 'local', acknowledge: th.ack, belief: th.belief,
     petals: [th.known, th.friend, th.reach].map((text, i) => ({ label: PETAL_LABELS[i], text })),
@@ -167,8 +206,8 @@ export function composeWorryLocally(worry: string): WorrySpec {
 }
 
 /** Untrusted model output -> a WorrySpec, with every gap filled from the local library. */
-export function validateWorry(raw: any, worry: string, by: Composer): WorrySpec | 'crisis' {
-  const base = composeWorryLocally(worry);
+export function validateWorry(raw: any, worry: string, by: Composer, part?: string): WorrySpec | 'crisis' {
+  const base = composeWorryLocally(worry, part);
   if (!raw || typeof raw !== 'object') return base;
   if (raw.crisis === true) return 'crisis';
   const texts = [clean(raw.known, 240), clean(raw.friend, 240), clean(raw.reach, 240)];
@@ -191,11 +230,12 @@ export function validateWorry(raw: any, worry: string, by: Composer): WorrySpec 
   };
 }
 
-export async function composeWorry(worry: string): Promise<WorrySpec | 'crisis'> {
-  const text = worry.trim().slice(0, 400);
-  if (CRISIS.test(text)) return 'crisis';
+export async function composeWorry(worry: string, part?: string): Promise<WorrySpec | 'crisis'> {
+  const text = worry.trim().slice(0, 400), said = part?.trim().slice(0, 240);
+  if (CRISIS.test(text) || (said && CRISIS.test(said))) return 'crisis';
   const by = currentComposer();
-  if (by === 'local') return composeWorryLocally(text);
-  const raw = await askModel('/api/worry', { worry: text }, `${WORRY_SYSTEM}\n\nWhat they set down: "${text}"`);
-  return raw ? validateWorry(raw, text, by) : composeWorryLocally(text);
+  if (by === 'local') return composeWorryLocally(text, said);
+  const prompt = `${WORRY_SYSTEM}\n\nWhat they set down: "${text}"` + (said ? `\n\nAsked "What part of this is weighing on you?", they said: "${said}". Let that part lead everything you write.` : '');
+  const raw = await askModel('/api/worry', { worry: text, part: said }, prompt);
+  return raw ? validateWorry(raw, text, by, said) : composeWorryLocally(text, said);
 }

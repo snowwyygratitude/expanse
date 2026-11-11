@@ -21,7 +21,7 @@ export const FEATURES = [
   'sun', 'rays', 'moon', 'stars', 'aurora', 'clouds', 'rainbow', 'rain', 'storm', 'mist', 'petals',
   'fireflies', 'motes', 'mountains', 'lake', 'waterDoor', 'blooms', 'blueBlooms', 'warmBlooms',
   'hopeSprouts', 'mushrooms', 'door', 'path', 'passage', 'floaters', 'garlands', 'lanterns',
-  'memoryLantern', 'puffs', 'butterflies', 'birds', 'koi', 'treeGlow', 'treeGold', 'gifts',
+  'memoryLantern', 'puffs', 'butterflies', 'birds', 'koi', 'treeGlow', 'treeGold', 'gifts', 'ridgeGlow',
 ] as const;
 export type Feature = (typeof FEATURES)[number];
 export const PAL_KEYS = ['skyTop', 'skyMid', 'skyLow', 'light', 'ground', 'groundFar', 'foliage', 'water'] as const;
@@ -46,7 +46,7 @@ export const EMO: Record<Emotion, EmotionDef> = {
   joy: {
     name: 'Joy', color: hex('#ffd35a'), deep: hex('#f08a1d'),
     pal: pal('#3f9fe8', '#96d4fb', '#ffe7a6', '#ffd76a', '#86d062', '#c6ea8c', '#55b765', '#7fd6f2'),
-    f: { sun: 1, rays: 0.7, clouds: 0.35, blooms: 1, puffs: 1, butterflies: 0.5, petals: 0.5, motes: 0.5, lake: 0.3 },
+    f: { sun: 1, rays: 0.7, clouds: 0.35, blooms: 0.75, puffs: 0.5, butterflies: 0.5, petals: 0.4, motes: 0.5, lake: 0.3 },
     solo: 'The Sunlit Meadow', soloWhisper: 'Everything here is turning its face toward the light.',
     treasure: 'pinwheel', chord: [0, 4, 7, 11],
   },
@@ -74,7 +74,7 @@ export const EMO: Record<Emotion, EmotionDef> = {
   courage: {
     name: 'Anger', color: hex('#ff7a5c'), deep: hex('#c0303f'),
     pal: pal('#2a1d5c', '#c04a6c', '#ffb35c', '#ffb25a', '#6c8c4c', '#b3925f', '#3d774d', '#d98c7a'),
-    f: { mountains: 1, treeGlow: 1, rays: 1, sun: 0.7, birds: 1, clouds: 0.45, motes: 0.8, petals: 0.5, lake: 0.25 },
+    f: { mountains: 1, treeGlow: 1, rays: 1, sun: 0.7, birds: 1, clouds: 0.45, motes: 0.4, lake: 0.25, ridgeGlow: 1 },
     solo: 'The High Country', soloWhisper: 'The mountains stood up with you, and the whole sky caught fire.',
     treasure: 'feather', chord: [0, 7, 12, 14],
   },
@@ -95,7 +95,7 @@ export const EMO: Record<Emotion, EmotionDef> = {
   fear: { // built only from effects the garden already had: mist, moonlight, small watchful lights
     name: 'Fear', color: hex('#b7a8e8'), deep: hex('#3a2f6b'),
     pal: pal('#1a1438', '#4a3a7a', '#9a86c8', '#cdb8ff', '#4a6078', '#6a6a9a', '#3a506a', '#5a5a9a'),
-    f: { mist: 1, moon: 0.6, stars: 0.4, fireflies: 0.7, motes: 0.4, mushrooms: 0.5, blueBlooms: 0.3, clouds: 0.3, lake: 0.3 },
+    f: { mist: 1, moon: 0.6, stars: 0.4, fireflies: 0.4, motes: 0.3, blueBlooms: 0.3, clouds: 0.3, lake: 0.3 },
     solo: 'The Hush in the Mist', soloWhisper: 'The mist is thick, and small lights are keeping watch in it.',
     treasure: 'waylamp', chord: [0, 3, 7, 14],
   },
@@ -115,7 +115,7 @@ export const RECIPES: Record<string, Recipe> = {
   'joy+curiosity': { name: 'The Festival of Wonders', whisper: 'Someone strung lights between the trees. The floating things came on their own.', f: { garlands: 1, floaters: 1, lanterns: 0.45, stars: 0.8, sun: 0, rays: 0 }, pal: { skyTop: '#1d1750', skyMid: '#6a3f9c', skyLow: '#ffb27a' } },
   'joy+courage': { name: 'The Summit Parade', whisper: 'Birds are racing the sunrise over the peaks.', f: { birds: 1, mountains: 1, rainbow: 0.4, petals: 0.7 } },
   'joy+gratitude': { name: 'The Lantern Tree', whisper: 'A golden tree, and around it every light you ever thanked.', f: { treeGold: 1, lanterns: 1, gifts: 1, garlands: 0.5 } },
-  'joy+hope': { name: 'The Morning Chorus', whisper: 'Everything that can bloom has decided to do it today.', f: { blooms: 1, hopeSprouts: 1, rainbow: 1, birds: 0.8 } },
+  'joy+hope': { name: 'The Morning Chorus', whisper: 'Everything that can bloom has decided to do it today.', f: { blooms: 0.45, hopeSprouts: 0.5, rainbow: 0.6, birds: 0.6, puffs: 0.35 } },
   'calm+sadness': { name: 'The Moonlit Rain', whisper: 'Soft rain on still water. The moon is keeping you company.', f: { moon: 1, rain: 0.55, lake: 1, lanterns: 0.4, clouds: 0.45, stars: 0.3 } },
   'calm+curiosity': { name: 'The Door Beneath Still Water', whisper: 'The lake is quiet. Something beneath it is glowing.', f: { waterDoor: 1, door: 0, path: 0.4, lake: 1, stars: 0.8, koi: 1 } },
   'calm+courage': { name: 'The Mirror Peaks', whisper: 'The mountains are looking at themselves in the lake. An aurora came to watch.', f: { aurora: 1, mountains: 1, lake: 1, stars: 0.9, sun: 0, rays: 0, moon: 0.5 }, pal: { skyTop: '#101a4a', skyMid: '#31508f', skyLow: '#e99aa8' } },

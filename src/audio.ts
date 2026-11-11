@@ -395,6 +395,35 @@ export class Sound {
   setChord(semis: number[]) { this.chord = semis; }
   setRain(_a: number) { /* rain now follows the mood in tick() */ }
 
+  /** the small sound of the garden's answer to a planted feeling (see garden/gesture.ts) */
+  cue(kind: string) {
+    if (!this.audible) return;
+    const near = this.spot((r() - 0.5) * 0.3, 0.12), t0 = this.at(0);
+    switch (kind) {
+      case 'ember': // a small crackle as an ember lands
+        for (let i = 0; i < 4; i++) this.burst(this.white, t0 + r() * 0.12, 0.004 + r() * 0.006, 0.03 + r() * 0.03, near, 'bandpass', 2200 + r() * 2600, 1.4, 0.001);
+        this.partial(t0, 150 + r() * 30, 0.05, 0.5, near);
+        break;
+      case 'settle': // the stones take the heat: a low, steady warmth
+        this.partial(t0, 98, 0.1, 2.6, near); this.partial(t0, 147, 0.05, 2.2, near);
+        this.burst(this.brown, t0, 1.6, 0.05, near, 'lowpass', 300, 0.7, 0.5);
+        break;
+      case 'lantern': // a soft tone, as a small light comes on
+        this.kalimba(t0, this.hz(this.note(4), 2), 0.08, near, 1.6);
+        this.tube(t0 + 0.08, this.hz(this.note(6), 2), 0.02, near);
+        break;
+      case 'bloom': [0, 2, 4].forEach((n, i) => this.kalimba(this.at(i * 0.16), this.hz(this.note(n), 2), 0.07, near, 1.3)); break;
+      case 'bud': this.phrase([{ dur: 0.5, f: u => 520 * (1 + 0.25 * u), a: u => Math.sin(Math.PI * u) }], t0, near, 0.035, 0.05); break;
+      case 'sprout': this.kalimba(t0, this.hz(this.note(0), 2), 0.07, near, 1.4); this.rustleBurst(0, 0.5, 0.02); break;
+      case 'hop': this.bubble(t0, 330 + r() * 60, 0.12, near, 0.08, 1.7); break;
+      case 'drop': this.bubble(t0, 1600 + r() * 500, 0.09, near, 0.07, 1.5); this.burst(this.white, t0, 0.02, 0.025, near, 'highpass', 3000, 0.7, 0.002); break;
+      case 'leaf': this.rustleBurst(0, 0.6, 0.02); break;
+      case 'flutter': for (let i = 0; i < 6; i++) this.burst(this.pink, t0 + i * 0.06, 0.03, 0.012, near, 'bandpass', 900, 1.5, 0.01); break;
+      case 'spark': this.tube(t0, this.hz(this.note(5), 2), 0.03, near); break;
+      case 'ripple': this.bubble(t0, 420, 0.05, near, 0.12, 1.3); break;
+      case 'reveal': this.kalimba(t0, this.hz(this.note(2), 2), 0.05, this.spot(0, 0.3), 2.2); break;
+    }
+  }
   /** a touch: a kalimba for close, wooden things; a small chime tube for high, glinting ones */
   chime(step = Math.floor(r() * 6), vol = 0.16, octave = 2) {
     if (!this.audible) return;
@@ -436,8 +465,7 @@ export class Sound {
     this.partial(t0, 70, 0.3, 0.3, near, 1.4);
     for (let i = 0; i < 8; i++) this.burst(this.white, t0 + 0.04 + r() * 0.25, 0.004, 0.02 + r() * 0.03, this.spot((r() - 0.5) * 0.6, 0.1), 'bandpass', 900 + r() * 2200, 1.5, 0.001);
     this.rustleBurst(0.15, 1.8, 0.035);
-    [0, 1, 2].forEach((s, i) => this.kalimba(this.at(0.4 + i * 0.16), this.hz(this.note(s), 2), 0.075, this.spot(0, 0.15), 1.3));
-    this.react(1.2);
+    // the garden's own answer follows (gesture cues); no extra chorus here, so the moment stays quiet
   }
   /** something large moves (a door opens, the sky comes down): air rushing through leaves */
   whoosh(up = true) {

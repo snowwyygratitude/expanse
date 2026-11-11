@@ -92,7 +92,7 @@ http.createServer(async (req, res) => {
       if (typeof wish !== 'string' || !wish.trim()) return json(res, 400, { error: 'empty' });
       try {
         const spec = worry
-          ? await askClaude(WORRY_SYSTEM, `What they set down: "${wish.trim().slice(0, 400)}"`)
+          ? await askClaude(WORRY_SYSTEM, `What they set down: "${wish.trim().slice(0, 400)}"` + (typeof body.part === 'string' && body.part.trim() ? `\n\nAsked "What part of this is weighing on you?", they said: "${body.part.trim().slice(0, 240)}". Let that part lead everything you write.` : ''))
           : await composeWish(wish.trim().slice(0, 280), memory);
         return spec ? json(res, 200, spec) : json(res, 422, { error: 'no_scene' });
       } catch (err) {

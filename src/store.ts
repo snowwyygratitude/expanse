@@ -9,14 +9,14 @@ export interface Keepsake {
   data?: any;              // worldDrop: { emotions, wish, name, sky }
 }
 export interface Memory { id: string; text: string; date: number; u: number; v: number; }
-export interface Planted { emo: Emotion | 'wish' | 'worry'; x: number; y: number; }
+export interface Planted { emo: Emotion | 'wish' | 'worry'; x: number; y: number; words?: string; }
 
 export interface Save {
   v: 1;
   planted: Planted[];
   wish: WishSpec | null;
   /** the worry currently in the garden: held (a stone to carry), planted (being unknotted) or done */
-  worry: (WorrySpec & { stage: 'held' | 'planted' | 'done'; opened: boolean[] }) | null;
+  worry: (WorrySpec & { stage: 'held' | 'planted' | 'done'; opened: boolean[]; explored?: boolean; part?: string }) | null;
   discovered: Record<string, number>;   // world key -> first seen
   treasures: Record<string, number>;    // keepsake kind -> first found
   keepsakes: Keepsake[];

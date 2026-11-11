@@ -10,6 +10,19 @@ The eight seeds are Joy, Calm, Sadness, Anger, Fear, Love, Wonder and Hope.
 In the code, Wonder, Anger and Love keep their original keys (`curiosity`,
 `courage`, `gratitude`) so gardens saved earlier keep working.
 
+## Planting a feeling
+
+Planting one seed is a complete visit. The seed lands, then one nearby thing
+answers it (`src/garden/gesture.ts`): embers settle into stones for Anger, an
+acorn lantern comes on for Fear, a flower opens and a bud leans toward it for
+Joy + Hope. In a pairing, both feelings take part in one event. Only after
+that answer has registered do two lines appear: the scene name and one short
+sentence. Other sparkle and invitations step back while it plays. A few words
+can be added afterwards, typed or spoken, and are kept beside the seed.
+
+Sublines marked `source: 'review'` in `SPECS` are the reviewed copy; those
+marked `'draft'` follow the same pattern and are ready to be replaced.
+
 ## Run it
 
 ```bash

@@ -30,6 +30,14 @@ const hooks: Hooks = {
   ask(o) {
     return new Promise(resolve => {
       input.value = ''; input.placeholder = o.placeholder; input.maxLength = o.max;
+      const q = $('#whisper .q'), chips = $('#whisper .chips');
+      q.textContent = o.question ?? ''; q.hidden = !o.question;
+      chips.replaceChildren(); chips.hidden = !o.chips?.length;
+      for (const c of o.chips ?? []) {
+        const b = document.createElement('button'); b.type = 'button'; b.textContent = c;
+        b.onclick = () => { if (/something else/i.test(c)) { input.placeholder = 'tell it in your own words…'; input.focus(); } else done(c); };
+        chips.append(b);
+      }
       $('#whisper .go').textContent = o.action; $('#whisper small').textContent = o.note;
       whisper.hidden = false; fit(); setTimeout(() => input.focus(), 30);
       speakBtn.hidden = !(o.voice && voiceAvailable());
