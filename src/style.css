@@ -49,3 +49,42 @@ body { font-family: var(--serif); color: #fff; -webkit-user-select: none; user-s
 #whisper .chips button:hover, #whisper .chips button:focus-visible { background: rgba(255, 255, 255, .16); border-color: #fff; }
 /* while the writing line is open, it is the only thing speaking */
 body:has(#whisper:not([hidden])) #caption { opacity: 0; transition-duration: .25s; }
+
+/* ---- setting down a worry: the stone rises and becomes the place to write ---- */
+#stone { position: fixed; left: 0; top: 0; width: 100%; height: 100%; z-index: 5; }
+#stone[hidden] { display: none; }
+#stone .dim { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 62%, rgba(12, 12, 40, .5), rgba(8, 8, 30, .78)); animation: fade .45s ease; }
+#stone.closing .dim { opacity: 0; transition: opacity .6s ease .8s; }
+#stone.closing .x { opacity: 0; transition: opacity .2s ease; }
+body:has(#stone:not([hidden])) #caption { opacity: 0; transition-duration: .25s; }
+#stone .x { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .08); color: #fff; font-size: 17px; cursor: pointer; }
+#stone .panel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 16px; padding: 70px 6vw max(19vh, 150px); pointer-events: none; }
+#stone .panel > * { pointer-events: auto; }
+#stone .x { z-index: 1; }
+#stone.typing .panel { justify-content: center; padding-bottom: 18px; }
+#stone.closing .panel > :not(.rock) { opacity: 0; transition: opacity .25s ease; }
+#stone .starters { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px 9px; max-width: 440px; animation: fade .6s ease .25s both; }
+#stone .starters[hidden] { display: none; }
+#stone .starters button { font: 15.5px var(--serif); color: #fff; padding: 9px 15px; border: 1px solid rgba(255, 255, 255, .42); border-radius: 999px; background: rgba(255, 255, 255, .08); cursor: pointer; }
+#stone .starters button:hover, #stone .starters button:focus-visible { background: rgba(255, 255, 255, .18); border-color: #fff; outline: none; }
+#stone .rock { position: relative; flex: none; width: min(86vw, 420px); height: min(56vw, 272px); display: flex; align-items: center; justify-content: center; padding: 11% 13%;
+  border-radius: 47% 53% 44% 56% / 56% 50% 50% 44%;
+  background: radial-gradient(ellipse at 34% 26%, #c9c3e6 0%, #9d97c4 30%, #726c9e 62%, #4c4778 100%);
+  box-shadow: inset 0 3px 2px rgba(255, 255, 255, .35), inset 0 -16px 28px rgba(30, 24, 70, .55), 0 26px 40px -12px rgba(0, 0, 20, .65), 0 0 60px rgba(185, 172, 255, .28);
+  transition: filter .7s ease, transform .7s cubic-bezier(.4, 0, .6, 1); cursor: text; }
+#stone .rock::before, #stone .rock::after { content: ''; position: absolute; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #8fd39a, #4f9a6a); opacity: .85; pointer-events: none; }
+#stone .rock::before { width: 18%; height: 11%; left: 3%; bottom: 20%; transform: rotate(-24deg); }
+#stone .rock::after { width: 13%; height: 8%; right: 7%; bottom: 10%; transform: rotate(18deg); }
+#stone .spiral { position: absolute; width: 34%; left: 33%; top: 50%; transform: translateY(-50%); opacity: .2; pointer-events: none; }
+#stone .spiral path { fill: none; stroke: #f2edff; stroke-width: 3; stroke-linecap: round; }
+#stone textarea { position: relative; width: 100%; max-height: 100%; background: none; border: 0; outline: none; resize: none; overflow-y: auto; text-align: center; color: #fbf8ff; caret-color: #fff; font: italic 21px/1.38 var(--serif); text-shadow: 0 1px 0 rgba(40, 30, 80, .55), 0 0 12px rgba(40, 30, 80, .35); -webkit-user-select: text; user-select: text; padding: 0; }
+#stone textarea::placeholder { color: rgba(255, 255, 255, .72); }
+#stone .down { font: 17px var(--serif); color: #2a2550; background: #f4f0ff; border: 0; border-radius: 999px; padding: 13px 30px; min-width: 180px; cursor: pointer; box-shadow: 0 6px 20px rgba(0, 0, 20, .35); transition: opacity .3s ease, transform .2s ease; }
+#stone .down:active { transform: scale(.97); }
+#stone .down[disabled] { opacity: .4; cursor: default; }
+#stone small { font-size: 12px; letter-spacing: .05em; opacity: .7; text-align: center; min-height: 1em; }
+/* step four: it grows heavy, then goes back to the ground */
+#stone .rock.heavy { filter: brightness(.72) saturate(.85); transform: translateY(14px) scale(1.02, .95); }
+#stone .rock.heavy textarea { opacity: .55; transition: opacity .7s ease; }
+@media (prefers-reduced-motion: reduce) { #stone .rock { transition-duration: .2s; } }
+#stone.arming, #stone.arming * { pointer-events: none !important; }

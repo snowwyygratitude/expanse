@@ -22,6 +22,7 @@ type SeedKind = Emotion | 'wish' | 'worry';
 
 export interface Hooks {
   caption(title: string, line?: string, opts?: { fresh?: boolean; hold?: number }): void;
+  holdStone(o: { at: () => { x: number; y: number; w: number }; note: string | Promise<string>; max: number; starters: [string, string][]; onHeavy?: () => void }): Promise<string | null>;
   ask(o: { placeholder: string; note: string | Promise<string>; action: string; max: number; question?: string; chips?: string[] }): Promise<string | null>;
 }
 
@@ -82,7 +83,7 @@ export class Garden {
   private auroraSprites: HTMLCanvasElement[] = [];
   private idle = 14; private guide = -1; /* firefly: -1 resting, else 0..1 along its flight */
   /** the garden's answer to what was planted, and the quiet around it */
-  private gest: Gesture | null = null; private quietUntil = -9; private hush = 1; private camGoal: number | null = null; private exploreT = -9;
+  private gest: Gesture | null = null; private quietUntil = -9; private hush = 1; private stoneUp = false; private camGoal: number | null = null; private exploreT = -9;
   private autoT = -9; private hintT = 4; private last = 0; private lean: { scene: Scene; k: number } | null = null;
 
   constructor(private canvas: HTMLCanvasElement, public save: Save, public sound: Sound, private hooks: Hooks) {
@@ -538,8 +539,16 @@ export class Garden {
   /* ---------------- worries: set one down, unknot it, choose new words ---------------- */
   async askWorry() {
     if (this.worryBusy || this.choice) return;
-    const words = await this.hooks.ask({ placeholder: 'what is weighing on you?', note: this.privacyNote('your words travel to Claude so the garden can answer'), action: 'set it down', max: 400 });
+    this.stoneUp = true; this.camGoal = null;
+    const words = await this.hooks.holdStone({
+      at: () => ({ x: this.sx(STONE.x), y: this.sy(STONE.y - 15), w: STONE.rx * 2 * this.s }),
+      note: this.privacyNote('your words travel to Claude so the garden can answer'), max: 400,
+      starters: [['someone I love', 'Someone I love '], ['work', 'At work, '], ['my health', 'My health '], ['money', 'Money '], ['myself', 'I keep thinking I '], ['something else', '']],
+      onHeavy: () => this.sound.cue('settle'),
+    });
+    this.stoneUp = false;
     if (!words || !words.trim()) return;
+    this.burst(STONE.x, STONE.y - 10, [200, 190, 240], 12, 70, 1); this.rings.push({ x: STONE.x, y: STONE.y, t0: this.t, dur: 1, max: 110, c: [210, 200, 255], flat: 0.32 });
     this.save.worryUsed = true; this.guide = -1;
     this.worryBusy = true;
     this.hooks.caption('', 'The garden is listening…', { hold: 60 });
@@ -582,6 +591,7 @@ export class Garden {
     const { ctx, t } = this, P = this.cur.pal, w = this.save.worry, { x, y, rx, ry } = STONE;
     this.grab(STONE, STONE.x, STONE.y - 15, 56, 'stone');
     const ph = t % 10, breath = this.worryBusy ? 0.5 + 0.5 * Math.sin(t * 6) : ph < 4 ? smooth(ph / 4) : 1 - smooth((ph - 4) / 6); // in for four, out for six
+    if (this.stoneUp) return; // it is in the person's hands
     const held = w?.stage === 'held', away = w?.stage === 'planted', inviting = !held && !away, lit = away ? 0.25 : 1;
     const top = y - 15;
     ctx.fillStyle = 'rgba(8,14,36,.38)'; ell(ctx, x + 4, y + 7, rx * 1.12, ry * 0.9); ctx.fill();

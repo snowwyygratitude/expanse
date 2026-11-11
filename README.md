@@ -124,8 +124,13 @@ Discoveries
 - **The Listening Flower**: whisper a wish; it grows a wish-seed to plant.
 
 Worries
-- **Set it down.** Touch the resting stone ("set down a worry") and type what
-  is weighing on you. The words condense into a heavy worry stone.
+- **Set it down.** Touch the resting stone ("set down a worry"). The garden
+  dims and the stone rises into your hands, large enough to write on. A few
+  starting points ("someone I love", "work", "my health", "money", "myself",
+  "something else") can begin the sentence for you, or tap the stone and
+  write. One button, "Set it down"; the ✕ or a tap on the dimmed garden closes
+  it. When you set it down the stone grows heavy and settles back into the
+  garden, and the words condense into a worry stone to carry.
 - **Carry it in.** Drag the stone into the garden like a seed. The world turns
   into a calm scene composed from what you said, with one sentence that
   acknowledges it.
