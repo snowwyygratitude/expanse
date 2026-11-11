@@ -708,7 +708,10 @@ export class Garden {
   }
   private tap(x: number, y: number) {
     for (let i = this.hits.length - 1; i >= 0; i--) { const h = this.hits[i]; if (Math.hypot(x - h.x, y - h.y) < h.r) { h.fn(); return; } }
-    if (y > this.ledgeTop) return;
+    if (y > this.ledgeTop) { // a tap on the ledge itself calls every planted emotion seed back to its place
+      for (let i = this.planted.length - 1; i >= 0; i--) if (!this.custom(this.planted[i].kind)) this.unplant(i);
+      return;
+    }
     const wx = this.wx(x), wy = this.wy(y), ground = wy > gy(wx) + 6;
     if (this.cur.f.rain > 0.35) { // touch the rain: light falls where you touched and something blooms
       if (ground && !inLake(wx, wy)) this.rainBloom(wx, wy);

@@ -31,6 +31,6 @@ Answer with ONE JSON object and nothing else (no markdown fence):
   "scene": ${SCENE_SHAPE}
 }
 
-For the scene: it should feel like exhaling. Calm is usually the strongest material, joined by whatever answers this particular worry (hope, gratitude, courage, a little curiosity). Never use storm, and keep rain at 0.4 or below. Favour still water, lanterns, fireflies, soft light.
+For the scene: it should feel like exhaling. Calm is usually the strongest material, joined above all by hope, and by gratitude or a little curiosity where they fit. Never use courage or fear (in this garden they are anger and fear). Never use storm, and keep rain at 0.4 or below. Favour still water, lanterns, fireflies, soft light.
 
 ${FEATURE_GUIDE}`;

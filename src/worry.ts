@@ -65,7 +65,7 @@ const THEMES: Theme[] = [
     friend: 'A friend would say: money trouble is a situation you are in, not a measure of who you are.',
     reach: 'One number, one call, or one list is within reach today. Looking at it clearly often shrinks it a little.',
     reframes: ['My circumstances are not my character.', 'I can face one piece of this at a time.', 'Asking for help with this is a capable thing to do.'],
-    emotions: { calm: 1, courage: 0.4, hope: 0.5 }, features: [['mountains', 0.3], ['path', 0.8], ['door', 0], ['mushrooms', 0], ['fireflies', 0.6], ['lanterns', 0.5]] },
+    emotions: { calm: 1, hope: 0.8 }, features: [['path', 0.8], ['door', 0], ['mushrooms', 0], ['fireflies', 0.6], ['lanterns', 0.5]] },
   { re: /health|sick|\bill\b|illness|unwell|doctor|pain|symptom|diagnos|my body|sleep|insomnia|tired|hospital|results|surgery|panic|anxiety attack|cancer|chemo|tumou?r|covid|flu\b|fever|injur|accident|recover|treatment|scan|dying|old age|getting old|vet\b/,
     name: 'The Resting Place', ack: 'Worry about a body, yours or someone else’s, is a way of caring. It is allowed to be scary.',
     belief: 'If I stop watching for danger, something terrible will happen.',
@@ -174,7 +174,10 @@ export function validateWorry(raw: any, worry: string, by: Composer): WorrySpec 
   const texts = [clean(raw.known, 240), clean(raw.friend, 240), clean(raw.reach, 240)];
   const reframes = (Array.isArray(raw.reframes) ? raw.reframes : []).map((r: unknown) => clean(r, 110)).filter(Boolean).slice(0, 3);
   const scene = validateSpec(raw.scene)?.spec;
-  if (scene) { // whatever was asked for, the answer to a worry is never a storm
+  if (scene) {
+    // a worry is answered with hope, never with anger (the old "courage" material) or fear
+    const e = scene.emotions, moved = (e.courage ?? 0) + (e.fear ?? 0);
+    if (moved) { delete e.courage; delete e.fear; e.hope = Math.min(1, (e.hope ?? 0) + moved); } // whatever was asked for, the answer to a worry is never a storm
     scene.features = (scene.features ?? []).filter(f => f.key !== 'storm').map(f => (f.key === 'rain' ? { ...f, amount: Math.min(f.amount, 0.4) } : f));
     scene.features.push({ key: 'storm', amount: 0 });
   }
