@@ -24,7 +24,7 @@ export interface Save {
   hopeUnlocked: boolean;
   everPlanted: boolean;
   /** where things stand after the person has rearranged the scenery */
-  layout: { tree: number[]; door: number[]; stone: number[]; wish: number[]; lake: number[]; flowers: number[][]; mushrooms: number[][] } | null;
+  layout: { v?: number; tree: number[]; door: number[]; stone: number[]; wish: number[]; lake: number[]; flowers: number[][]; mushrooms: number[][] } | null;
   moveHint: boolean;
   worryUsed: boolean;        // once someone has set a worry down, the firefly stops pointing at the stone
   sound: boolean;

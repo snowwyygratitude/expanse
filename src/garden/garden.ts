@@ -27,7 +27,7 @@ export interface Hooks {
 const WORLD_W = 1800, HORIZON = 560, CX = 900;
 const TREE = { x: 700, y: 690 }, DOOR = { x: 900, y: 704 }, LAKE = { x: 1220, y: 735, rx: 255, ry: 62 };
 const STONE = { x: 872, y: 758, rx: 60, ry: 17 }, BUDS = [[-38, -40], [0, -68], [38, -40]];
-const WISH = { x: 660, y: 778 }, MEM = { x: 1130, y: 492 }, PASSAGE_X = 1050;
+const WISH = { x: 1030, y: 790 }, WK = 1.45 /* the listening flower stands on the lake shore, drawn larger than life */, MEM = { x: 1130, y: 492 }, PASSAGE_X = 1050;
 const GOLD: RGB = [245, 190, 80];
 const DARK: RGB = [14, 18, 44];
 const BLOOM_COLORS = ['#ff7aa2', '#ffb347', '#fff07a', '#ff8fd0', '#b98cff', '#ffffff', '#ff6f6f'].map(hex);
@@ -108,7 +108,7 @@ export class Garden {
     const spot = (x0: number, x1: number, y0 = 612, y1 = 880): [number, number] => {
       for (let i = 0; i < 30; i++) {
         const x = lerp(x0, x1, r()), y = lerp(y0, y1, r() ** 0.8);
-        if (!inLake(x, y, 26) && Math.hypot(x - DOOR.x, y - DOOR.y) > 45 && Math.hypot(x - TREE.x, y - TREE.y) > 40 && Math.hypot(x - WISH.x, y - WISH.y) > 40 && ((x - STONE.x) / 80) ** 2 + ((y - STONE.y) / 42) ** 2 > 1) return [x, y];
+        if (!inLake(x, y, 26) && Math.hypot(x - DOOR.x, y - DOOR.y) > 45 && Math.hypot(x - TREE.x, y - TREE.y) > 40 && Math.hypot(x - WISH.x, y - WISH.y) > 64 && ((x - STONE.x) / 80) ** 2 + ((y - STONE.y) / 42) ** 2 > 1) return [x, y];
       }
       return [x0, y0];
     };
@@ -184,7 +184,7 @@ export class Garden {
     for (const o of all) if (inLake(o.x, o.y, 14)) [o.x, o.y] = this.groundSpot(o.x, o.y);
     this.layStones();
     const xy = (o: { x: number; y: number }) => [Math.round(o.x), Math.round(o.y)];
-    this.save.layout = { tree: xy(TREE), door: xy(DOOR), stone: xy(STONE), wish: xy(WISH), lake: xy(LAKE), flowers: this.flowers.map(xy), mushrooms: this.mushrooms.map(xy) };
+    this.save.layout = { v: 2, tree: xy(TREE), door: xy(DOOR), stone: xy(STONE), wish: xy(WISH), lake: xy(LAKE), flowers: this.flowers.map(xy), mushrooms: this.mushrooms.map(xy) };
     this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y }));
     persist(this.save);
   }
@@ -193,7 +193,7 @@ export class Garden {
     const ok = (a: unknown): a is number[] => Array.isArray(a) && a.length === 2 && a.every(v => Number.isFinite(v));
     const put = (o: { x: number; y: number }, a: unknown) => { if (ok(a)) { o.x = clamp(a[0], 40, WORLD_W - 40); o.y = clamp(a[1], 600, 900); } };
     if (ok(L.lake)) { const dx = clamp(L.lake[0], 300, WORLD_W - 300) - LAKE.x, dy = clamp(L.lake[1], 690, 800) - LAKE.y; LAKE.x += dx; LAKE.y += dy; MEM.x += dx; MEM.y += dy; for (const l of this.lanterns) { l.x += dx; l.y += dy; } }
-    put(TREE, L.tree); put(DOOR, L.door); put(STONE, L.stone); put(WISH, L.wish);
+    put(TREE, L.tree); put(DOOR, L.door); put(STONE, L.stone); if ((L as any).v === 2) put(WISH, L.wish);
     if (Array.isArray(L.flowers) && L.flowers.length === this.flowers.length) this.flowers.forEach((f, i) => put(f, L.flowers[i]));
     if (Array.isArray(L.mushrooms) && L.mushrooms.length === this.mushrooms.length) this.mushrooms.forEach((m, i) => put(m, L.mushrooms[i]));
     this.layStones();
@@ -302,7 +302,7 @@ export class Garden {
     return this.planted.some(p => p.kind === kind) || this.flights.some(f => f.kind === kind) || (this.drag?.type === 'seed' && this.drag.kind === kind);
   }
   private slotOf(kind: SeedKind): { x: number; y: number; world: boolean } {
-    if (kind === 'wish') return { x: WISH.x + 44, y: WISH.y + 8, world: true };
+    if (kind === 'wish') return { x: WISH.x - 58, y: WISH.y + 6, world: true };
     if (kind === 'worry') return { x: STONE.x, y: STONE.y - 34, world: true };
     const s = this.slots.find(q => q.kind === kind) ?? this.slots[0];
     return { x: s.x, y: s.y, world: false };
@@ -1150,13 +1150,17 @@ export class Garden {
     if (g > 0.6) this.hit(DOOR.x, DOOR.y - 60, 56, () => this.openHidden('door', DOOR.x, DOOR.y - 60, DOOR.x + 70, DOOR.y + 44));
   }
   private paintWishFlower() {
-    const { ctx, t } = this, x = WISH.x, y = WISH.y, busy = this.wishBusy, sp = busy ? 7 : 1.6, pulse = 0.8 + 0.2 * Math.sin(t * sp);
+    const { ctx, t } = this, x = WISH.x, y = WISH.y, K = WK, busy = this.wishBusy, sp = busy ? 7 : 1.6, pulse = 0.8 + 0.2 * Math.sin(t * sp);
     const sw = Math.sin(t * 0.9) * 0.06, hx = x + 14 + Math.sin(sw) * 60, hyy = y - 66;
+    const HX = x + (hx - x) * K, HY = y + (hyy - y) * K; // where the bloom really is, after scaling
+    const breath = (() => { const ph = t % 10; return ph < 4 ? smooth(ph / 4) : 1 - smooth((ph - 4) / 6); })();
+    const c1: RGB = [215 + 40 * Math.sin(t * 0.8), 200 + 40 * Math.sin(t * 0.8 + 2), 255];
+    ctx.save(); ctx.translate(x, y + 2); ctx.scale(1, 0.32); shine(ctx, 0, 0, 70, c1, 0.25 + 0.25 * breath); ctx.restore();
+    shine(ctx, HX + 6, HY - 14, (70 + 26 * breath) * pulse, c1, 0.55 + 0.25 * breath);
+    ctx.save(); ctx.translate(x, y); ctx.scale(K, K); ctx.translate(-x, -y);
     ctx.strokeStyle = css(mix(this.cur.pal.foliage, WHITE, 0.25)); ctx.lineWidth = 3; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x, y); ctx.bezierCurveTo(x - 10, y - 30, x + 20, y - 40, hx, hyy); ctx.stroke();
     ctx.fillStyle = css(mix(this.cur.pal.foliage, WHITE, 0.2)); ell(ctx, x - 12, y - 14, 13, 5, 0.6); ctx.fill(); ell(ctx, x + 12, y - 24, 12, 4.5, -0.5); ctx.fill();
-    const c1: RGB = [215 + 40 * Math.sin(t * 0.8), 200 + 40 * Math.sin(t * 0.8 + 2), 255];
-    shine(ctx, hx + 6, hyy - 10, 58 * pulse, c1, 0.6);
     ctx.save(); ctx.translate(hx, hyy); ctx.rotate(0.5 + sw);
     const g = ctx.createLinearGradient(0, 6, 0, -32); g.addColorStop(0, '#b9a2ff'); g.addColorStop(0.6, '#f4ecff'); g.addColorStop(1, '#bff3ff');
     ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-3, 6); ctx.bezierCurveTo(-5, -10, -20, -20, -19, -30); ctx.quadraticCurveTo(-9, -24, 0, -31); ctx.quadraticCurveTo(9, -24, 19, -30); ctx.bezierCurveTo(20, -20, 5, -10, 3, 6); ctx.fill();
@@ -1164,10 +1168,19 @@ export class Garden {
     ctx.fillStyle = '#fff8c8'; ell(ctx, 0, -27, 3, 2); ctx.fill();
     ctx.restore();
     if (!this.rm) for (let i = 0; i < 3; i++) { const q = (t * (busy ? 1.2 : 0.35) + i / 3) % 1; ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - q)})`; ell(ctx, hx + 16 + Math.sin(q * 6 + i) * 6, hyy - 30 - q * 46, 2, 2); ctx.fill(); }
-    if (!this.save.wish && !busy) text(ctx, 'whisper a wish', hx + 8, hyy - 58, 11.5 / this.s, 0.5 + 0.2 * Math.sin(t * 1.5), { italic: true });
-    this.grab(WISH, hx + 6, hyy - 12, 34, 'wish'); this.grab(WISH, x, y - 20, 22, 'wish');
-    this.hit(hx + 6, hyy - 12, 34, () => { this.sound.chime(1); void this.askWish(); });
+    ctx.restore();
+    // its words, above the bloom, on a soft dark backing so they read over any sky or scenery
+    const said = busy ? 'listening…' : this.save.wish ? (this.seedBusy('wish') ? '' : 'carry your wish-seed into the garden') : 'whisper a wish';
+    if (said) {
+      const ly = HY - 62;
+      ctx.save(); ctx.translate(HX + 4, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, said.length * 5.2 + 34, [10, 14, 40], 0.55); ctx.restore();
+      text(ctx, said, HX + 4, ly, 14.5 / this.s, 0.95, { italic: true });
+      if (!busy && !this.save.wish) this.lateHit(HX + 4, ly, 34, () => { this.sound.chime(1); void this.askWish(); });
+    }
+    this.grab(WISH, HX + 6, HY - 14, 40, 'wish'); this.grab(WISH, x, y - 24, 26, 'wish');
+    this.lateHit(HX + 6, HY - 14, 40, () => { this.sound.chime(1); void this.askWish(); }); // wins over butterflies passing in front
   }
+
   private paintPuff(p: Garden['puffs'][number]) {
     const { ctx, t } = this, d = 0.8 + (p.y - 640) / 300 * 0.45, q = 1 - p.hop;
     const air = p.hop > 0 ? Math.sin(q * Math.PI) : 0, j = Math.sin(clamp(p.jump) * Math.PI), up = air * 24 + j * 50;
