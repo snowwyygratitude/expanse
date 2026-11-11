@@ -82,7 +82,7 @@ export class Garden {
   private auroraSprites: HTMLCanvasElement[] = [];
   private idle = 14; private guide = -1; /* firefly: -1 resting, else 0..1 along its flight */
   /** the garden's answer to what was planted, and the quiet around it */
-  private gest: Gesture | null = null; private quietUntil = -9; private wordsT = 1e9; private hush = 1; private camGoal: number | null = null; private exploreT = -9;
+  private gest: Gesture | null = null; private quietUntil = -9; private hush = 1; private camGoal: number | null = null; private exploreT = -9;
   private autoT = -9; private hintT = 4; private last = 0; private lean: { scene: Scene; k: number } | null = null;
 
   constructor(private canvas: HTMLCanvasElement, public save: Save, public sound: Sound, private hooks: Hooks) {
@@ -358,22 +358,14 @@ export class Garden {
     else { seed.ax = undefined; seed.ay = undefined; }
     this.gest = new Gesture(key, spec, gx, gy, side, { x: seed.x, y: seed.y }, LAKE, c => this.sound.cue(c), this.rm, steady);
     if (!steady) {
-      this.quietUntil = this.t + this.gest.revealAt + 7; this.wordsT = this.t + this.gest.revealAt + 6;
+      this.quietUntil = this.t + this.gest.revealAt + 7;
       const f = this.gest.focus;
       if (spec.focus === 'lake') this.camGoal = clamp(LAKE.x - this.vw * 0.56, 0, Math.max(0, WORLD_W - this.vw)); // bring the near bank and doorway into reach
       else if (f.x < this.cam.x + this.vw * 0.18 || f.x > this.cam.x + this.vw * 0.82) this.camGoal = clamp(f.x - this.vw * 0.5, 0, Math.max(0, WORLD_W - this.vw));
-    } else this.wordsT = this.t;
+    }
   }
   /** invitations (the stone's and flower's words, the guide) wait while a feeling is being answered */
   private invite() { return this.t < this.quietUntil ? 0 : clamp((this.t - this.quietUntil) / 1.5); }
-  private async askWords() {
-    const em = this.planted.filter(p => !this.custom(p.kind)), seed = em[em.length - 1]; if (!seed) return;
-    const words = await this.hooks.ask({ placeholder: 'a few words about this feeling…', note: 'kept only in this garden, on this device', action: 'leave them here', max: 140 });
-    if (!words || !words.trim()) return;
-    seed.words = words.trim(); this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y, words: p.words, ax: p.ax, ay: p.ay })); persist(this.save);
-    this.sound.cue('lantern'); this.burst(seed.x, seed.y - 50, [255, 240, 200], 10, 50, 1);
-    this.hooks.caption(`“${seed.words}”`, 'The garden is keeping this beside your seed.', { hold: 10 });
-  }
   idleCaption() {
     const sub = this.gest?.spec.sub ?? this.world.whisper;
     const today = new Date().toDateString();
@@ -741,7 +733,7 @@ export class Garden {
     for (const sl of this.slots) if (!this.seedBusy(sl.kind) && Math.hypot(x - sl.x, y - sl.y) < this.seedR * 1.7) { this.startSeedDrag(sl.kind, base); return; }
     if (this.save.wish && !this.seedBusy('wish')) { const h = this.slotOf('wish'); if (Math.hypot(x - this.sx(h.x), y - this.sy(h.y)) < 30) { this.startSeedDrag('wish', base); return; } }
     if (this.save.worry?.stage === 'held' && !this.seedBusy('worry')) { const h = this.slotOf('worry'); if (Math.hypot(x - this.sx(h.x), y - this.sy(h.y)) < 44) { this.startSeedDrag('worry', base); return; } }
-    // words and buds that must win ("add a few words", the flower, the stone's buds) beat the seed or keepsake beneath them
+    // words and buds that must win (the flower, the stone's buds) beat the seed or keepsake beneath them
     if (this.late.some(h => Math.hypot(x - h.x, y - h.y) < h.r)) { this.drag = { type: 'pan', ...base, lastX: x, grabC: this.grabAt(x, y) }; return; }
     for (let i = this.save.keepsakes.length - 1; i >= 0; i--) {
       const k = this.save.keepsakes[i];
@@ -1364,17 +1356,11 @@ export class Garden {
     ctx.strokeStyle = css(mix(c, WHITE, 0.35)); ctx.lineWidth = 2.6 * d; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.quadraticCurveTo(p.x + 5 * d, p.y - h * 0.5, p.x, p.y - h); ctx.stroke();
     ctx.fillStyle = css(mix(c, WHITE, 0.25)); ell(ctx, p.x - 8 * d * g, p.y - h * 0.55, 8 * d * g, 3.2 * d * g, 0.55); ctx.fill(); ell(ctx, p.x + 8 * d * g, p.y - h * 0.7, 8 * d * g, 3.2 * d * g, -0.55); ctx.fill();
     drawSeed(ctx, p.kind, p.x, p.y - h - 9 * d + Math.sin(t * 2 + i) * 2, 8.5 * d * g, t, pulse);
-    const newest = this.planted.filter(q => !this.custom(q.kind)).slice(-1)[0] === p;
     if (p.words) { // the person's words, kept as a small glowing note beside the seed
       const nx = p.x - (this.gest?.x && this.gest.x > p.x ? 18 : -18) * d, ny = p.y - 50 * d + Math.sin(t * 1.2 + i) * 2;
       shine(ctx, nx, ny, 16 * d, [255, 236, 190], 0.6);
       ctx.fillStyle = '#fff6dc'; ctx.save(); ctx.translate(nx, ny); ctx.rotate(-0.15); ctx.fillRect(-6 * d, -4 * d, 12 * d, 8 * d); ctx.strokeStyle = 'rgba(160,120,80,.55)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-4 * d, -1 * d); ctx.lineTo(4 * d, -1 * d); ctx.moveTo(-4 * d, 1.5 * d); ctx.lineTo(2 * d, 1.5 * d); ctx.stroke(); ctx.restore();
       this.lateHit(nx, ny, 22, () => { this.sound.chime(2); this.hooks.caption(`“${p.words}”`, 'Kept beside your seed.', { hold: 8 }); });
-    } else if (newest && this.t > this.wordsT && !this.drag) {
-      const a = clamp((this.t - this.wordsT) / 2) * 0.62, ox = this.gest && this.gest.x > p.x ? -1 : 1, lx = p.x + ox * 8 * d, ly = p.y - 86 * d;
-      ctx.save(); ctx.translate(lx, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, 80, [10, 14, 40], 0.45 * a / 0.62); ctx.restore();
-      text(ctx, 'add a few words', lx, ly, 12.5 / this.s, a, { italic: true });
-      if (a > 0.2) this.lateHit(lx, ly, 34, () => { this.sound.chime(1); void this.askWords(); });
     }
   }
   private paintLantern(x: number, y: number, sc: number, a: number, boost: number) {
