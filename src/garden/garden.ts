@@ -22,7 +22,7 @@ type SeedKind = Emotion | 'wish' | 'worry';
 
 export interface Hooks {
   caption(title: string, line?: string, opts?: { fresh?: boolean; hold?: number }): void;
-  ask(o: { placeholder: string; note: string; action: string; max: number; voice?: boolean; question?: string; chips?: string[] }): Promise<string | null>;
+  ask(o: { placeholder: string; note: string | Promise<string>; action: string; max: number; voice?: boolean; question?: string; chips?: string[] }): Promise<string | null>;
 }
 
 const WORLD_W = 1800, HORIZON = 560, CX = 900;
@@ -42,7 +42,7 @@ interface Flower { x: number; y: number; kind: 'joy' | 'blue' | 'warm' | 'hope';
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; c: RGB; r: number; grav: number; shape: 0 | 1 | 2; screen?: boolean; }
 interface Ring { x: number; y: number; t0: number; dur: number; max: number; c: RGB; flat: number; }
 interface Flight { kind: SeedKind; x0: number; y0: number; tx: number; ty: number; world: boolean; t: number; dur: number; arc: number; done: () => void; }
-interface Sprout { kind: SeedKind; x: number; y: number; t0: number; words?: string; }
+interface Sprout { kind: SeedKind; x: number; y: number; t0: number; words?: string; ax?: number; ay?: number; }
 
 export class Garden {
   ctx: Ctx; W = 0; H = 0; dpr = 1; s = 1; vw = 0;
@@ -92,7 +92,7 @@ export class Garden {
     this.applyLayout();
     // restore the world exactly as it was left
     this.planted = save.planted.filter(p => p.emo === 'wish' ? !!save.wish : p.emo === 'worry' ? !!save.worry && save.worry.stage !== 'held' : (EMOTIONS as readonly string[]).includes(p.emo)).slice(0, 2)
-      .map(p => ({ kind: p.emo, x: p.x, y: p.y, t0: -10, words: (p as any).words }));
+      .map(p => ({ kind: p.emo, x: p.x, y: p.y, t0: -10, words: (p as any).words, ax: (p as any).ax, ay: (p as any).ay }));
     this.world = this.compose();
     this.cur = JSON.parse(JSON.stringify(this.world.scene));
     this.resetWorldState();
@@ -198,19 +198,37 @@ export class Garden {
       LAKE.x = nx; LAKE.y = ny; MEM.x += dx; MEM.y += dy; for (const l of this.lanterns) { l.x += dx; l.y += dy; } // its lanterns travel with it
       return;
     }
+    if (name === 'answer' && this.gest) { this.shiftAnswer(...this.groundSpot(wx, wy)); return; }
+    if (name === 'sprout' && this.gest) { // a seed takes its answer along
+      const em = this.planted.filter(p => !this.custom(p.kind)), px = o.x, py = o.y;
+      [o.x, o.y] = this.groundSpot(wx, wy);
+      if (em[em.length - 1] === o) this.shiftAnswer(this.gest.x + o.x - px, this.gest.y + o.y - py);
+      return;
+    }
     [o.x, o.y] = this.groundSpot(wx, wy);
     if (name === 'door') this.layStones();
     if (name === 'puff') { const p = o as Garden['puffs'][number]; p.hop = 0; p.fx = p.tx = p.x; p.fy = p.ty = p.y; p.gx = NaN; p.wait = 1.5; }
+  }
+  /** move the garden's answer, and everything in it, to a new spot */
+  private shiftAnswer(x: number, y: number) {
+    const g = this.gest!, dx = x - g.x, dy = y - g.y;
+    g.x += dx; g.y += dy; for (const q of g.places) { q.x += dx; q.y += dy; }
+    const em = this.planted.filter(p => !this.custom(p.kind)), seed = em[em.length - 1];
+    if (seed) { seed.ax = g.x; seed.ay = g.y; }
   }
   /** after a move: nothing is left standing in the water, and the arrangement is remembered */
   private settle() {
     const all: { x: number; y: number }[] = [TREE, DOOR, STONE, WISH, ...this.flowers, ...this.mushrooms, ...this.puffs, ...this.planted, ...this.save.keepsakes];
     for (const o of all) if (inLake(o.x, o.y, 14)) [o.x, o.y] = this.groundSpot(o.x, o.y);
-    for (const p of this.planted) if (this.blocked(p.x, p.y, -10)) [p.x, p.y] = this.freeSpot(p.x, p.y);
+    const em = this.planted.filter(p => !this.custom(p.kind)), newest = em[em.length - 1];
+    for (const p of this.planted) if (this.blocked(p.x, p.y, -10)) {
+      const px = p.x, py = p.y; [p.x, p.y] = this.freeSpot(p.x, p.y);
+      if (p === newest && this.gest) this.shiftAnswer(this.gest.x + p.x - px, this.gest.y + p.y - py);
+    }
     this.layStones();
     const xy = (o: { x: number; y: number }) => [Math.round(o.x), Math.round(o.y)];
     this.save.layout = { v: 3, tree: xy(TREE), door: xy(DOOR), stone: xy(STONE), wish: xy(WISH), lake: xy(LAKE), flowers: this.flowers.map(xy), mushrooms: this.mushrooms.map(xy) };
-    this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y, words: p.words }));
+    this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y, words: p.words, ax: p.ax, ay: p.ay }));
     persist(this.save);
   }
   private applyLayout() {
@@ -303,7 +321,7 @@ export class Garden {
     this.wave = { x: origin.x, y: origin.y, t0: this.t };
     this.resetWorldState();
     this.rainBlooms.forEach(b => (b.th = 9)); // marked to fade
-    this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y, words: p.words }));
+    this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y, words: p.words, ax: p.ax, ay: p.ay }));
     const w = this.world;
     this.sound.setChord(w.emotions.length ? EMO[w.emotions[0]].chord : [0, 7, 12, 16]);
     if (w.emotions.length && announce) {
@@ -331,6 +349,8 @@ export class Garden {
       const mx = (other.x + seed.x) / 2, my = (other.y + seed.y) / 2 + 4;
       if (!this.blocked(mx, my, 6, door) && !inLake(mx, my, 34)) { gx = mx; gy = my; side = seed.x > other.x ? 1 : -1; }
     }
+    if (steady && seed.ax !== undefined && seed.ay !== undefined) { gx = seed.ax; gy = seed.ay; } // where the person last put it
+    else { seed.ax = undefined; seed.ay = undefined; }
     this.gest = new Gesture(key, spec, gx, gy, side, { x: seed.x, y: seed.y }, LAKE, c => this.sound.cue(c), this.rm, steady);
     if (!steady) {
       this.quietUntil = this.t + this.gest.revealAt + 7; this.wordsT = this.t + this.gest.revealAt + 6;
@@ -345,7 +365,7 @@ export class Garden {
     const em = this.planted.filter(p => !this.custom(p.kind)), seed = em[em.length - 1]; if (!seed) return;
     const words = await this.hooks.ask({ placeholder: 'a few words about this feeling…', note: 'kept only in this garden, on this device', action: 'leave them here', max: 140, voice: true });
     if (!words || !words.trim()) return;
-    seed.words = words.trim(); this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y, words: p.words })); persist(this.save);
+    seed.words = words.trim(); this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y, words: p.words, ax: p.ax, ay: p.ay })); persist(this.save);
     this.sound.cue('lantern'); this.burst(seed.x, seed.y - 50, [255, 240, 200], 10, 50, 1);
     this.hooks.caption(`“${seed.words}”`, 'The garden is keeping this beside your seed.', { hold: 10 });
   }
@@ -507,8 +527,7 @@ export class Garden {
   }
   private async askWish() {
     if (this.wishBusy) return;
-    const local = (await readyComposer()) === 'local';
-    const words = await this.hooks.ask({ placeholder: 'describe a garden you wish for…', note: local ? 'your words stay on this device' : 'your words travel to Claude to shape the scene', action: 'whisper it', max: 240 });
+    const words = await this.hooks.ask({ placeholder: 'describe a garden you wish for…', note: this.privacyNote('your words travel to Claude to shape the scene'), action: 'whisper it', max: 240 });
     if (!words || !words.trim()) return;
     this.wishBusy = true;
     this.hooks.caption('', 'The flower is listening…', { hold: 60 });
@@ -522,8 +541,7 @@ export class Garden {
   /* ---------------- worries: set one down, unknot it, choose new words ---------------- */
   async askWorry() {
     if (this.worryBusy || this.choice) return;
-    const local = (await readyComposer()) === 'local';
-    const words = await this.hooks.ask({ placeholder: 'what is weighing on you?', note: local ? 'your words stay on this device' : 'your words travel to Claude so the garden can answer', action: 'set it down', max: 400, voice: true });
+    const words = await this.hooks.ask({ placeholder: 'what is weighing on you?', note: this.privacyNote('your words travel to Claude so the garden can answer'), action: 'set it down', max: 400, voice: true });
     if (!words || !words.trim()) return;
     this.save.worryUsed = true; this.guide = -1;
     this.worryBusy = true;
@@ -656,11 +674,14 @@ export class Garden {
       if (a > 0.2) this.lateHit(p.x, ly, 36, () => { this.sound.chime(1); void this.exploreWorry(); });
     }
   }
+  /** the line under the writing space says truthfully where the words go, once that is known */
+  private privacyNote(remote: string): Promise<string> {
+    return readyComposer().then(c => (c === 'local' ? 'your words stay on this device' : remote));
+  }
   /** begins with one open question, and lets the person's own answer lead */
   private async exploreWorry() {
     const w = this.save.worry; if (!w || this.worryBusy) return;
-    const local = (await readyComposer()) === 'local';
-    const part = await this.hooks.ask({ question: 'What part of this is weighing on you?', placeholder: 'or say it in your own words…', chips: worryParts(w.worry), note: local ? 'your words stay on this device' : 'your words travel to Claude so the garden can answer', action: 'tell the garden', max: 240, voice: true });
+    const part = await this.hooks.ask({ question: 'What part of this is weighing on you?', placeholder: 'or say it in your own words…', chips: worryParts(w.worry), note: this.privacyNote('your words travel to Claude so the garden can answer'), action: 'tell the garden', max: 240, voice: true });
     if (!part || !part.trim()) return;
     this.worryBusy = true;
     this.hooks.caption('', 'The garden is listening…', { hold: 60 });
@@ -715,6 +736,8 @@ export class Garden {
     for (const sl of this.slots) if (!this.seedBusy(sl.kind) && Math.hypot(x - sl.x, y - sl.y) < this.seedR * 1.7) { this.startSeedDrag(sl.kind, base); return; }
     if (this.save.wish && !this.seedBusy('wish')) { const h = this.slotOf('wish'); if (Math.hypot(x - this.sx(h.x), y - this.sy(h.y)) < 30) { this.startSeedDrag('wish', base); return; } }
     if (this.save.worry?.stage === 'held' && !this.seedBusy('worry')) { const h = this.slotOf('worry'); if (Math.hypot(x - this.sx(h.x), y - this.sy(h.y)) < 44) { this.startSeedDrag('worry', base); return; } }
+    // words and buds that must win ("add a few words", the flower, the stone's buds) beat the seed or keepsake beneath them
+    if (this.late.some(h => Math.hypot(x - h.x, y - h.y) < h.r)) { this.drag = { type: 'pan', ...base, lastX: x, grabC: this.grabAt(x, y) }; return; }
     for (let i = this.save.keepsakes.length - 1; i >= 0; i--) {
       const k = this.save.keepsakes[i];
       if (Math.hypot(x - this.sx(k.x), y - (this.sy(k.y) - 22 * this.s)) < 30) { this.drag = { type: 'keep', k, ox: this.sx(k.x) - x, oy: this.sy(k.y) - y, ...base }; return; }
@@ -1190,7 +1213,7 @@ export class Garden {
       drawKeepsake(ctx, k.kind, k.x, k.y - lift, sc, t + k.x, k.data);
     }]);
     this.planted.forEach((p, i) => list.push([p.y, () => (p.kind === 'worry' ? this.paintKnot(p) : this.paintSprout(p, i))]));
-    if (this.gest) { const g = this.gest; list.push([g.y + 1, () => g.paint(ctx, t, this.cur.pal.light, this.hush)]); }
+    if (this.gest) { const g = this.gest; list.push([g.y + 1, () => { g.paint(ctx, t, this.cur.pal.light, this.hush); for (const q of g.places) this.grab(g, q.x, q.y - (q.obj === 'pool' ? 0 : 22), q.obj === 'pool' ? 40 : 28, 'answer'); }]); }
     if (!this.glimmer.found && this.t > this.quietUntil) list.push([this.glimmer.y, () => {
       const gl = this.glimmer, tw = Math.max(0, Math.sin(t * 1.9 + gl.x)) ** 5;
       shine(ctx, gl.x, gl.y - 8, 18 + 22 * tw, WHITE, 0.25 + 0.7 * tw);
@@ -1332,7 +1355,7 @@ export class Garden {
       ctx.fillStyle = '#fff6dc'; ctx.save(); ctx.translate(nx, ny); ctx.rotate(-0.15); ctx.fillRect(-6 * d, -4 * d, 12 * d, 8 * d); ctx.strokeStyle = 'rgba(160,120,80,.55)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-4 * d, -1 * d); ctx.lineTo(4 * d, -1 * d); ctx.moveTo(-4 * d, 1.5 * d); ctx.lineTo(2 * d, 1.5 * d); ctx.stroke(); ctx.restore();
       this.lateHit(nx, ny, 22, () => { this.sound.chime(2); this.hooks.caption(`“${p.words}”`, 'Kept beside your seed.', { hold: 8 }); });
     } else if (newest && this.t > this.wordsT && !this.drag) {
-      const a = clamp((this.t - this.wordsT) / 2) * 0.62, ox = this.gest && this.gest.x > p.x ? -1 : 1, lx = p.x + ox * 8 * d, ly = p.y - 72 * d;
+      const a = clamp((this.t - this.wordsT) / 2) * 0.62, ox = this.gest && this.gest.x > p.x ? -1 : 1, lx = p.x + ox * 8 * d, ly = p.y - 86 * d;
       ctx.save(); ctx.translate(lx, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, 80, [10, 14, 40], 0.45 * a / 0.62); ctx.restore();
       text(ctx, 'add a few words', lx, ly, 12.5 / this.s, a, { italic: true });
       if (a > 0.2) this.lateHit(lx, ly, 34, () => { this.sound.chime(1); void this.askWords(); });

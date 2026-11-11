@@ -38,7 +38,10 @@ const hooks: Hooks = {
         b.onclick = () => { if (/something else/i.test(c)) { input.placeholder = 'tell it in your own words…'; input.focus(); } else done(c); };
         chips.append(b);
       }
-      $('#whisper .go').textContent = o.action; $('#whisper small').textContent = o.note;
+      $('#whisper .go').textContent = o.action;
+      const small = $('#whisper small'), stamp = Symbol(); (small as any).stamp = stamp;
+      if (typeof o.note === 'string') small.textContent = o.note;
+      else { small.textContent = ''; void o.note.then(t => { if ((small as any).stamp === stamp) small.textContent = t; }); }
       whisper.hidden = false; fit(); setTimeout(() => input.focus(), 30);
       speakBtn.hidden = !(o.voice && voiceAvailable());
       const done = (v: string | null) => { stopVoice(); whisper.hidden = true; whisper.onsubmit = null; resolve(v); };

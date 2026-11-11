@@ -9,7 +9,7 @@ export interface Keepsake {
   data?: any;              // worldDrop: { emotions, wish, name, sky }
 }
 export interface Memory { id: string; text: string; date: number; u: number; v: number; }
-export interface Planted { emo: Emotion | 'wish' | 'worry'; x: number; y: number; words?: string; }
+export interface Planted { emo: Emotion | 'wish' | 'worry'; x: number; y: number; words?: string; ax?: number; ay?: number; }
 
 export interface Save {
   v: 1;
