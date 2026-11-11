@@ -254,7 +254,7 @@ export class SkyView {
     const lift = (1 - a) * 40;
     text(ctx, 'Skies you have found', W / 2, 70 + lift, Math.min(24, W * 0.06), 1, { italic: true });
     text(ctx, `${found} of ${n}`, W / 2, 96 + lift, 12, 0.6, { spacing: 2 });
-    const land = W > H * 1.15, cols = land ? Math.ceil(n / 3) : 3, rows = Math.ceil(n / cols);
+    const land = W > H * 1.15, cols = land ? Math.ceil(n / 3) : n > 21 ? 4 : 3, rows = Math.ceil(n / cols);
     const trN = this.data.treasures.length, perRow = Math.max(4, Math.min(trN, Math.floor((W - 24) / 38))), trRows = Math.ceil(trN / perRow);
     const top = 124, bottom = H - (74 + trRows * 40);
     const cw = Math.min(land ? 150 : 128, (W - 16) / cols), ch = Math.min(96, (bottom - top) / rows);

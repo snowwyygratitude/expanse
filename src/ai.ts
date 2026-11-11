@@ -106,8 +106,9 @@ const EMO_WORDS: Record<Emotion, RegExp> = {
   calm: /calm|peace|quiet|still|gentle|soft|rest|sleep|slow|breath|hush|serene|silence|safe/,
   sadness: /sad|rain|miss|lonely|blue|tear|cry|grief|lost|goodbye|ache|heavy|melanchol|homesick/,
   curiosity: /curious|myster|secret|wonder|strange|door|explor|magic|unknown|puzzle|hidden|dream|question|weird/,
-  courage: /brave|courage|mountain|climb|storm|strong|bold|adventur|fierce|fearless|fight|stand|summit|dare/,
+  courage: /angry|anger|rage|furious|fire|brave|courage|mountain|climb|storm|strong|bold|adventur|fierce|fearless|fight|stand|summit|dare/,
   gratitude: /grateful|thank|gift|memory|memories|childhood|grandm|grandp|home|family|friend|love|cozy|nostalg|remember|kitchen/,
+  fear: /afraid|scared|fear|anxious|nervous|fog|mist|dark|shadow/,
   hope: /hope|dawn|new|begin|spring|tomorrow|grow|sprout|morning|someday|wish|start|light at/,
 };
 const FEATURE_WORDS: [RegExp, Feature, number][] = [
@@ -124,12 +125,12 @@ const FEATURE_WORDS: [RegExp, Feature, number][] = [
 const ADJ: Record<Emotion, string[]> = {
   joy: ['Sunlit', 'Laughing', 'Golden'], calm: ['Quiet', 'Still', 'Hushed'], sadness: ['Rain-soft', 'Blue', 'Tender'],
   curiosity: ['Secret', 'Wondering', 'Half-hidden'], courage: ['High', 'Unafraid', 'Bright-edged'],
-  gratitude: ['Remembered', 'Warm', 'Well-loved'], hope: ['Dawning', 'New-green', 'Someday'],
+  gratitude: ['Remembered', 'Warm', 'Well-loved'], fear: ['Hushed', 'Moonlit', 'Watchful'], hope: ['Dawning', 'New-green', 'Someday'],
 };
 const NOUN: Record<Emotion, string[]> = {
   joy: ['Meadow', 'Afternoon', 'Festival'], calm: ['Water', 'Evening', 'Shore'], sadness: ['Rain', 'Garden', 'Lake'],
   curiosity: ['Door', 'Path', 'Hollow'], courage: ['Ridge', 'Horizon', 'Summit'],
-  gratitude: ['Orchard', 'Hearth', 'Keepsake'], hope: ['Morning', 'Seedbed', 'Clearing'],
+  gratitude: ['Orchard', 'Hearth', 'Keepsake'], fear: ['Mist', 'Hollow', 'Night-light'], hope: ['Morning', 'Seedbed', 'Clearing'],
 };
 
 export function composeLocally(wish: string): WishSpec {

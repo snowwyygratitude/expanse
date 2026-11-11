@@ -132,6 +132,13 @@ export function drawSeed(ctx: Ctx, kind: Emotion | 'wish' | 'worry', x: number, 
       heart(ctx, r * 0.95); ctx.fill();
       break;
     }
+    case 'fear': { // a small seed peeking out from under its own hood
+      ell(ctx, 0, r * 0.08, r * 0.86, r * 0.92); ctx.fill();
+      ctx.fillStyle = css(deep, 0.75); ctx.beginPath(); ctx.ellipse(0, r * 0.02, r * 0.86, r * 0.92, 0, Math.PI * 1.02, Math.PI * 1.98); ctx.quadraticCurveTo(0, -r * 0.05, -r * 0.85, -r * 0.03); ctx.fill();
+      const bl = Math.sin(t * 0.9 + 1) > 0.96 ? 0.15 : 1;
+      ctx.fillStyle = '#fff'; ell(ctx, -r * 0.3, r * 0.3, r * 0.15, r * 0.19 * bl); ctx.fill(); ell(ctx, r * 0.3, r * 0.3, r * 0.15, r * 0.19 * bl); ctx.fill();
+      break;
+    }
     case 'hope': {
       ell(ctx, 0, r * 0.25, r * 0.72, r * 0.62); ctx.fill();
       ctx.strokeStyle = css(deep); ctx.lineWidth = Math.max(1.2, r * 0.12); ctx.lineCap = 'round';

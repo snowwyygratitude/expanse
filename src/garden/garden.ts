@@ -84,6 +84,7 @@ export class Garden {
 
   constructor(private canvas: HTMLCanvasElement, public save: Save, public sound: Sound, private hooks: Hooks) {
     this.ctx = canvas.getContext('2d')!;
+    save.hopeUnlocked = true; // all eight seeds are on the ledge from the start
     this.build();
     this.applyLayout();
     // restore the world exactly as it was left

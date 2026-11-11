@@ -6,6 +6,10 @@ of the scene; you carry one into the ground and the world transforms outward
 from the spot where it lands. Plant a second and the two mix into something
 neither would make alone.
 
+The eight seeds are Joy, Calm, Sadness, Anger, Fear, Love, Wonder and Hope.
+In the code, Wonder, Anger and Love keep their original keys (`curiosity`,
+`courage`, `gratitude`) so gardens saved earlier keep working.
+
 ## Run it
 
 ```bash

@@ -22,7 +22,7 @@ const DIST = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist
 const hasKey = Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 const client = hasKey ? new Anthropic() : null;
 
-const EMOTIONS = ['joy', 'calm', 'sadness', 'curiosity', 'courage', 'gratitude', 'hope'];
+const EMOTIONS = ['joy', 'calm', 'sadness', 'curiosity', 'courage', 'gratitude', 'hope', 'fear'];
 const FEATURES = ['sun', 'rays', 'moon', 'stars', 'aurora', 'clouds', 'rainbow', 'rain', 'storm', 'mist', 'petals', 'fireflies', 'motes', 'mountains', 'lake', 'waterDoor', 'blooms', 'blueBlooms', 'warmBlooms', 'hopeSprouts', 'mushrooms', 'door', 'path', 'passage', 'floaters', 'garlands', 'lanterns', 'memoryLantern', 'puffs', 'butterflies', 'birds', 'koi', 'treeGlow', 'treeGold', 'gifts'];
 
 const SYSTEM = `You compose scenes for a small magical garden out of a fixed component library. You never invent components.

@@ -1,5 +1,5 @@
 /** Prompts shared by the page (hosted-Claude path) and server/server.mjs. */
-export const EMOTION_KEYS = ['joy', 'calm', 'sadness', 'curiosity', 'courage', 'gratitude', 'hope'];
+export const EMOTION_KEYS = ['joy', 'calm', 'sadness', 'curiosity', 'courage', 'gratitude', 'hope', 'fear'];
 export const FEATURE_KEYS = ['sun', 'rays', 'moon', 'stars', 'aurora', 'clouds', 'rainbow', 'rain', 'storm', 'mist', 'petals', 'fireflies', 'motes', 'mountains', 'lake', 'waterDoor', 'blooms', 'blueBlooms', 'warmBlooms', 'hopeSprouts', 'mushrooms', 'door', 'path', 'passage', 'floaters', 'garlands', 'lanterns', 'memoryLantern', 'puffs', 'butterflies', 'birds', 'koi', 'treeGlow', 'treeGold', 'gifts'];
 
 export const SCENE_SHAPE = `{

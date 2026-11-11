@@ -11,10 +11,11 @@
  */
 import { RGB, hex, mix, clamp } from '../util';
 
-export const EMOTIONS = ['joy', 'calm', 'sadness', 'curiosity', 'courage', 'gratitude', 'hope'] as const;
+// internal keys are kept from the first version so saved gardens keep working: curiosity is shown as Wonder, courage as Anger, gratitude as Love
+export const EMOTIONS = ['joy', 'calm', 'sadness', 'curiosity', 'courage', 'gratitude', 'hope', 'fear'] as const;
 export type Emotion = (typeof EMOTIONS)[number];
 /** the six seeds everybody starts with; hope is found in the garden */
-export const BASE_EMOTIONS: Emotion[] = ['joy', 'calm', 'sadness', 'curiosity', 'courage', 'gratitude'];
+export const BASE_EMOTIONS: Emotion[] = ['joy', 'calm', 'sadness', 'courage', 'fear', 'gratitude', 'curiosity'];
 
 export const FEATURES = [
   'sun', 'rays', 'moon', 'stars', 'aurora', 'clouds', 'rainbow', 'rain', 'storm', 'mist', 'petals',
@@ -64,23 +65,23 @@ export const EMO: Record<Emotion, EmotionDef> = {
     treasure: 'mistbell', chord: [0, 3, 7, 10],
   },
   curiosity: {
-    name: 'Curiosity', color: hex('#c08cff'), deep: hex('#6a3fd0'),
+    name: 'Wonder', color: hex('#c08cff'), deep: hex('#6a3fd0'),
     pal: pal('#140f3a', '#45308a', '#d07cc2', '#9ff5e4', '#3b7478', '#5b6fa8', '#2c6a7a', '#4f7fd0'),
-    f: { stars: 0.7, door: 1, path: 1, mushrooms: 1, floaters: 0.6, motes: 1, fireflies: 0.6, lake: 0.3 },
+    f: { stars: 0.7, door: 1, path: 1, mushrooms: 1, floaters: 0.6, motes: 1, fireflies: 0.6, lake: 0.3, blueBlooms: 0.45 },
     solo: 'The Door in the Garden', soloWhisper: 'Something here was not here a moment ago.',
     treasure: 'crystal', chord: [0, 2, 7, 9],
   },
   courage: {
-    name: 'Courage', color: hex('#ff7a5c'), deep: hex('#c0303f'),
+    name: 'Anger', color: hex('#ff7a5c'), deep: hex('#c0303f'),
     pal: pal('#2a1d5c', '#c04a6c', '#ffb35c', '#ffb25a', '#6c8c4c', '#b3925f', '#3d774d', '#d98c7a'),
-    f: { mountains: 1, treeGlow: 1, rays: 1, sun: 0.7, birds: 1, clouds: 0.45, motes: 0.3, lake: 0.25 },
-    solo: 'The High Country', soloWhisper: 'The mountains stood up when you arrived.',
+    f: { mountains: 1, treeGlow: 1, rays: 1, sun: 0.7, birds: 1, clouds: 0.45, motes: 0.8, petals: 0.5, lake: 0.25 },
+    solo: 'The High Country', soloWhisper: 'The mountains stood up with you, and the whole sky caught fire.',
     treasure: 'feather', chord: [0, 7, 12, 14],
   },
   gratitude: {
-    name: 'Gratitude', color: hex('#ffab6b'), deep: hex('#d6557a'),
+    name: 'Love', color: hex('#ffab6b'), deep: hex('#d6557a'),
     pal: pal('#653a78', '#ee8a6c', '#ffd98a', '#ffc76a', '#9ab457', '#d9bf70', '#7c9c48', '#f0b08a'),
-    f: { treeGold: 1, gifts: 1, warmBlooms: 1, butterflies: 1, fireflies: 0.7, sun: 0.4, motes: 0.6, lake: 0.3, puffs: 0.4 },
+    f: { treeGold: 1, gifts: 1, warmBlooms: 1, butterflies: 1, fireflies: 0.7, sun: 0.4, motes: 0.6, lake: 0.3, puffs: 0.4, petals: 0.8, blooms: 0.35 },
     solo: 'The Giving Tree', soloWhisper: 'The old tree has been saving something for you.',
     treasure: 'heartstone', chord: [0, 4, 9, 12],
   },
@@ -90,6 +91,13 @@ export const EMO: Record<Emotion, EmotionDef> = {
     f: { rainbow: 0.8, hopeSprouts: 1, sun: 0.5, birds: 0.4, blooms: 0.35, motes: 0.5, lake: 0.35, clouds: 0.25 },
     solo: 'The First Green', soloWhisper: 'Small lights are pushing up through the soil.',
     treasure: 'dawnsprout', chord: [0, 4, 7, 14],
+  },
+  fear: { // built only from effects the garden already had: mist, moonlight, small watchful lights
+    name: 'Fear', color: hex('#b7a8e8'), deep: hex('#3a2f6b'),
+    pal: pal('#1a1438', '#4a3a7a', '#9a86c8', '#cdb8ff', '#4a6078', '#6a6a9a', '#3a506a', '#5a5a9a'),
+    f: { mist: 1, moon: 0.6, stars: 0.4, fireflies: 0.7, motes: 0.4, mushrooms: 0.5, blueBlooms: 0.3, clouds: 0.3, lake: 0.3 },
+    solo: 'The Hush in the Mist', soloWhisper: 'The mist is thick, and small lights are keeping watch in it.',
+    treasure: 'waylamp', chord: [0, 3, 7, 14],
   },
 };
 
@@ -123,6 +131,13 @@ export const RECIPES: Record<string, Recipe> = {
   'courage+gratitude': { name: 'The Elder Tree', whisper: 'It grew this tall by being thankful for every storm.', f: { treeGlow: 1, treeGold: 1, mountains: 0.8, gifts: 0.8, birds: 0.7 } },
   'courage+hope': { name: 'The Far Horizon', whisper: 'Past the last mountain there is a colour you have not seen yet.', f: { rainbow: 1, mountains: 1, birds: 1, hopeSprouts: 0.9, aurora: 0.4 } },
   'gratitude+hope': { name: 'The Promise Garden', whisper: 'Every gift on the tree is a seed for something else.', f: { treeGold: 1, gifts: 1, hopeSprouts: 1, butterflies: 1, rainbow: 0.5 } },
+  'joy+fear': { name: 'The Brave Little Morning', whisper: 'The mist is still here. The sun came anyway.', f: { mist: 0.7, sun: 0.8, rays: 0.7, blooms: 0.8, moon: 0, stars: 0 } },
+  'calm+fear': { name: 'The Lanterns in the Fog', whisper: 'Each lantern lights only a little, and a little is enough.', f: { lanterns: 1, mist: 1, lake: 1 } },
+  'sadness+fear': { name: 'The Sheltering Rain', whisper: 'Rain and mist together, and the blue flowers glowing like night-lights.', f: { rain: 0.6, mist: 0.8, blueBlooms: 1, fireflies: 0.8 } },
+  'curiosity+fear': { name: 'The Door in the Mist', whisper: 'You cannot see where it leads. It is glowing anyway.', f: { door: 1, mist: 0.9, mushrooms: 1, floaters: 0.6 } },
+  'courage+fear': { name: 'The Ember Mist', whisper: 'Red light is burning through the fog from the mountains.', f: { mountains: 1, mist: 0.8, rays: 0.9, treeGlow: 1 } },
+  'gratitude+fear': { name: 'The Held Hand', whisper: 'Warm lights have gathered close around the tree.', f: { treeGold: 0.9, lanterns: 0.7, mist: 0.6, warmBlooms: 1, fireflies: 1 } },
+  'hope+fear': { name: 'The Path Through', whisper: 'One stepping stone lights, then the next.', f: { path: 1, hopeSprouts: 1, mist: 0.7, rainbow: 0.3 } },
 };
 
 export const emptyF = (): Record<Feature, number> => Object.fromEntries(FEATURES.map(k => [k, 0])) as Record<Feature, number>;
