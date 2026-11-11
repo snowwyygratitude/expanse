@@ -298,7 +298,10 @@ export class Garden {
       const v = validateSpec(c.kind === 'wish' ? this.save.wish : this.save.worry?.scene);
       if (v) {
         const w = this.save.worry;
-        if (c.kind === 'worry' && w) { v.world.key = 'worry'; v.world.whisper = w.stage === 'done' ? '' : w.acknowledge; }
+        if (c.kind === 'worry' && w) {
+          v.world.key = 'worry'; v.world.whisper = w.stage === 'done' ? '' : w.acknowledge;
+          const f = v.world.scene.f; f.passage = 0; f.door = 0; f.waterDoor = 0; // a set-down worry is a quiet place, not a doorway somewhere else
+        }
         return v.world;
       }
     }
@@ -634,6 +637,7 @@ export class Garden {
     const warm: RGB = [255, 236, 190], sy0 = p.y - 11 * d;
     ctx.save(); ctx.translate(p.x, p.y); ctx.scale(1, 0.35); shine(ctx, 0, 0, 100 * d, n ? warm : [170, 160, 235], 0.35 + 0.15 * n); ctx.restore();
     ctx.fillStyle = 'rgba(10,20,40,.35)'; ell(ctx, p.x, p.y + 2, 30 * d, 8 * d); ctx.fill();
+    this.grab(p, p.x, sy0, 26 * d, 'knot'); // the set-down stone can be moved like everything else
     if (done) { // opened, and something small and bright is growing where it was
       for (const sg of [-1, 1]) { ctx.save(); ctx.translate(p.x + sg * 15 * d, sy0 + 3); ctx.rotate(sg * 0.35); const sgd = ctx.createLinearGradient(0, -9, 0, 9); sgd.addColorStop(0, '#8f89b8'); sgd.addColorStop(1, '#3a3660'); ctx.fillStyle = sgd; ctx.beginPath(); ctx.ellipse(0, 0, 12 * d, 9 * d, 0, sg > 0 ? -Math.PI / 2 : Math.PI / 2, sg > 0 ? Math.PI / 2 : Math.PI * 1.5); ctx.fill(); ctx.restore(); }
       shine(ctx, p.x, sy0 - 4, 30 * d * (0.9 + 0.1 * Math.sin(t * 2)), warm, 0.4);
