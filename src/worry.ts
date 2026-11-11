@@ -92,16 +92,28 @@ const THEMES: Theme[] = [
     emotions: { calm: 1, curiosity: 0.45, hope: 0.5 }, features: [['path', 1], ['door', 0], ['mushrooms', 0.4], ['stars', 0.8], ['fireflies', 0.8], ['floaters', 0]] },
 ];
 const CONFLICT: Theme = {
-  re: /fight|fought|argu|angry with|mad at|upset with|yell|shout|said something|hurt (their|his|her|my) feelings|not speaking|falling out|fell out/,
-  name: 'The Mending Bridge', ack: 'Conflict with someone you care about stays with you. It hurts because the relationship matters.',
-  belief: 'If we fight, it means something between us is broken.',
-  known: 'One hard moment happened. It is part of the relationship, not the whole of it.',
-  friend: 'A friend would say: people who love each other disagree, and they find their way back.',
-  reach: 'One small step toward repair is within reach, when you are ready. Even a single honest sentence.',
-  reframes: ['Two people who care can still disagree.', 'One hard conversation is not the whole relationship.', 'I can take the first small step toward repair.'],
+  re: /fight|fought|argu|angry with|mad at|upset with|said something|hurt (their|his|her|my) feelings|not speaking|falling out|fell out|disagree|\b(i|we) (yelled|shouted|snapped|screamed|lost my temper|lost it)/,
+  name: 'The Mending Bridge', ack: 'A falling-out stays with you. It is hard to put down while it still feels unsettled.',
+  belief: 'If we clash, it means something between us is broken for good.',
+  known: 'One hard moment happened. It is part of the story between you, not the whole of it.',
+  friend: 'A friend would say: one hard moment rarely decides everything between two people.',
+  reach: 'If and when you want to, one small step is within reach. Even a single honest sentence.',
+  reframes: ['One hard conversation does not decide everything.', 'I can let it settle before I decide what to do.', 'I can take a small step toward repair, if I choose to.'],
   emotions: { calm: 1, hope: 0.6, gratitude: 0.4 }, features: [['path', 0.7], ['door', 0], ['mushrooms', 0], ['lanterns', 0.6], ['fireflies', 0.6], ['rainbow', 0.2]],
 };
 THEMES.push(CONFLICT);
+/** someone treated them badly: this is not a disagreement, and it is not theirs to repair */
+const MISTREATED: Theme = {
+  re: /(yell|shout|scream|snapp?|swore|swear|curs)(ed|ing|s)? (at|to) me|(yell|shout|scream)(ed|ing)? in my face|(was|were|is|are|being|been) (rude|mean|cruel|nasty|harsh|aggressive|horrible|awful) (to|with) me|insult|humiliat|belittl|demean|bull(y|ied|ies|ying)|harass|talk(ed|s|ing)? down to me|put(s|ting)? me down|made fun of me|mock(ed|ing)? me|blam(ed|es|ing) me|(criticis|criticiz)(ed|es|ing) me|called me (a|an|stupid|useless|lazy)|treated me (badly|like)|disrespect/,
+  name: 'The Quiet Shelter', ack: 'Being treated that way is upsetting. It makes sense that it is still with you.',
+  belief: 'If they treated me that way, I must have deserved it.',
+  known: 'How someone speaks to you says more about them in that moment than about your worth. You did not deserve to be treated that way.',
+  friend: 'A friend would say: that was not okay, and you are allowed to feel shaken by it.',
+  reach: 'One thing is within reach: tell someone you trust what happened, or write it down while it is fresh.',
+  reframes: ['How they treated me is not a measure of my worth.', 'I can take this seriously without blaming myself.', 'I deserve to be spoken to with respect.'],
+  emotions: { calm: 1, hope: 0.5, gratitude: 0.3 }, features: [['lanterns', 0.7], ['fireflies', 0.6], ['puffs', 0.6], ['koi', 0.6], ['rain', 0]],
+};
+THEMES.push(MISTREATED);
 /** being looked at: presentations, crowds, the fear of being judged */
 const JUDGED: Theme = {
   re: /being seen|seen by|look(ed)? at|in front of|judg|embarrass|look (stupid|foolish|silly)|laugh at|what (they|people|others|everyone) (will )?think|audience|stage|blush/,
@@ -126,7 +138,8 @@ const PARTS: Record<string, string[]> = {
   'The Resting Place': ['not knowing yet', 'how my body feels', 'what might change'],
   'The Clearing': ['how much there is', 'where to start', 'never getting a break'],
   'The Path One Stone Long': ['making the wrong choice', 'not knowing yet', 'being left behind'],
-  'The Mending Bridge': ['what was said', 'whether we will be okay', 'my part in it'],
+  'The Mending Bridge': ['what was said', 'whether we will be okay', 'what to do next'],
+  'The Quiet Shelter': ['how they spoke to me', 'whether it was my fault', 'facing them again'],
   'The Watchful Lantern': ['not being able to help', 'not knowing what happens', 'how they are feeling'],
   'The Shared Lantern': ['not being able to fix it', 'how they are feeling', 'what it means for us'],
   'The Kind Audience': ['what people will think', 'making a mistake in front of them', 'being looked at'],
@@ -181,6 +194,7 @@ function pickTheme(worry: string): Words {
   const grief = THEMES[0];
   let th: Words;
   if (grief.re.test(w)) th = grief; // missing someone who is gone always reads as grief, whoever it is
+  else if (MISTREATED.re.test(w)) th = MISTREATED; // being yelled at is not a disagreement: say so first, whoever did it
   else if (CONFLICT.re.test(w)) th = CONFLICT;
   else if (who) {
     // read the worry with "my friend" taken out, so the person it is about doesn't decide the topic
