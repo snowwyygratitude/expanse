@@ -84,6 +84,8 @@ export class Gesture {
   revealed = false;
   readonly revealAt: number;
   readonly places: Place[] = [];
+  /** where a finger can take hold of the answer, refreshed every frame: [x, y, radius] in world units */
+  readonly handles: [number, number, number][] = [];
   private cued = new Set<string>();
   private dir: number;
   /** where the creature hops in from, and where the actors start */
@@ -131,7 +133,14 @@ export class Gesture {
   /* ---------------- drawing ---------------- */
   paint(ctx: Ctx, t: number, light: RGB, dim: number) {
     const a = this.age;
-    for (const p of this.places) this.drawObj(ctx, p, a, t, light);
+    this.handles.length = 0;
+    for (const p of this.places) {
+      this.drawObj(ctx, p, a, t, light);
+      const h = (p as any).head as number[] | undefined, big = p.obj === 'pool' || p.obj === 'stones';
+      this.handles.push([p.x, p.y - (big ? 0 : 14), big ? 44 : 30]);
+      if (h) this.handles.push([h[0], h[1], 32]);
+      if (p.obj === 'pool') for (const side of [-1, 1]) this.handles.push([p.x + side * 44, p.y, 30]); // a pool is wide: either end will do
+    }
     if (this.spec.focus === 'lake') this.drawLakeEvent(ctx, a, t);
     this.spec.actors.forEach((act, i) => this.drawActor(ctx, act, i, a, t, light, dim));
   }
@@ -349,6 +358,7 @@ export class Gesture {
         ctx.fillStyle = '#2a2a3a'; ell(ctx, R * 0.18, -R * 0.1, R * 0.11, R * 0.14 * blink); ctx.fill(); ell(ctx, R * 0.62, -R * 0.1, R * 0.1, R * 0.14 * blink); ctx.fill();
         ctx.fillStyle = 'rgba(255,140,150,.5)'; ell(ctx, R * 0.02, R * 0.2, R * 0.16, R * 0.1); ctx.fill(); ell(ctx, R * 0.76, R * 0.2, R * 0.13, R * 0.1); ctx.fill();
         ctx.restore();
+        this.handles.push([px, ty - R * 0.9 - up, R * 1.6]);
         break;
       }
     }

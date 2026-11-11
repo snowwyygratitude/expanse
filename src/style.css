@@ -27,7 +27,6 @@ body { font-family: var(--serif); color: #fff; -webkit-user-select: none; user-s
 #whisper button { background: none; border: 0; color: #fff; font: italic 16px var(--serif); padding: 10px 6px; cursor: pointer; opacity: .95; border-bottom: 1px solid transparent; }
 #whisper button.no { opacity: .6; }
 #whisper button[hidden] { display: none; }
-#whisper button.live { opacity: 1; animation: breathe 1.4s ease-in-out infinite; }
 #whisper .row { flex-wrap: wrap; justify-content: center; }
 @keyframes breathe { 50% { opacity: .45; } }
 #whisper button:hover, #whisper button:focus-visible { border-bottom-color: rgba(255, 255, 255, .7); outline: none; }

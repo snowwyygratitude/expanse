@@ -125,8 +125,8 @@ Discoveries
 - **The Listening Flower**: whisper a wish; it grows a wish-seed to plant.
 
 Worries
-- **Set it down.** Touch the resting stone ("set down a worry") and type or
-  speak what is weighing on you. The words condense into a heavy worry stone.
+- **Set it down.** Touch the resting stone ("set down a worry") and type what
+  is weighing on you. The words condense into a heavy worry stone.
 - **Carry it in.** Drag the stone into the garden like a seed. The world turns
   into a calm scene composed from what you said, with one sentence that
   acknowledges it.
@@ -146,8 +146,6 @@ Worries
   instead (`CRISIS` in `src/worry.ts`, plus a `crisis` flag from the model).
   Review that wording and the listed resources for your audience and region
   before giving this to real users.
-- Voice uses the hosting page's dictation when run as a Claude artifact, or the
-  browser's speech recognition otherwise. Typing always works.
 
 Rearranging
 - Press and hold almost anything, then drag: the great tree, the door (its
