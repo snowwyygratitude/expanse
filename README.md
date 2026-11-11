@@ -134,6 +134,10 @@ Worries
 - **Carry it in.** Drag the stone into the garden like a seed. The world turns
   into a calm scene composed from what you said, with one sentence that
   acknowledges it.
+- **Explore it (optional).** After a quiet moment, "explore this feeling"
+  lifts the set-down stone the same way and asks "What part of this is
+  weighing on you?". Tap one of the parts to answer at once, or write your own
+  on the stone and press "Tell the garden".
 - **Unknot it.** The stone sits wrapped in bramble with three buds. Each opens
   into a gentler view: what is actually known, what a friend would say, what is
   within reach. Each one lets more light through the stone.

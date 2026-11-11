@@ -22,7 +22,8 @@ type SeedKind = Emotion | 'wish' | 'worry';
 
 export interface Hooks {
   caption(title: string, line?: string, opts?: { fresh?: boolean; hold?: number }): void;
-  holdStone(o: { at: () => { x: number; y: number; w: number }; note: string | Promise<string>; max: number; starters: [string, string][]; onHeavy?: () => void }): Promise<string | null>;
+  /** starters: [label, beginning]; a null beginning makes the chip the answer itself */
+  holdStone(o: { at: () => { x: number; y: number; w: number }; note: string | Promise<string>; max: number; starters: [string, string | null][]; action: string; placeholder: string; question?: string; onHeavy?: () => void }): Promise<string | null>;
   ask(o: { placeholder: string; note: string | Promise<string>; action: string; max: number; question?: string; chips?: string[] }): Promise<string | null>;
 }
 
@@ -83,7 +84,7 @@ export class Garden {
   private auroraSprites: HTMLCanvasElement[] = [];
   private idle = 14; private guide = -1; /* firefly: -1 resting, else 0..1 along its flight */
   /** the garden's answer to what was planted, and the quiet around it */
-  private gest: Gesture | null = null; private quietUntil = -9; private hush = 1; private stoneUp = false; private camGoal: number | null = null; private exploreT = -9;
+  private gest: Gesture | null = null; private quietUntil = -9; private hush = 1; private stoneUp = false; private knotUp = false; private camGoal: number | null = null; private exploreT = -9;
   private autoT = -9; private hintT = 4; private last = 0; private lean: { scene: Scene; k: number } | null = null;
 
   constructor(private canvas: HTMLCanvasElement, public save: Save, public sound: Sound, private hooks: Hooks) {
@@ -547,6 +548,7 @@ export class Garden {
       at: () => ({ x: this.sx(STONE.x), y: this.sy(STONE.y - 15), w: STONE.rx * 2 * this.s }),
       note: this.privacyNote('your words travel to Claude so the garden can answer'), max: 400,
       starters: [['someone I love', 'Someone I love '], ['work', 'At work, '], ['my health', 'My health '], ['money', 'Money '], ['myself', 'I keep thinking I '], ['something else', '']],
+      action: 'Set it down', placeholder: 'what is weighing on you?',
       onHeavy: () => this.sound.cue('settle'),
     });
     this.stoneUp = false;
@@ -632,7 +634,7 @@ export class Garden {
   }
   /** the planted worry: a stone wrapped in bramble, with three buds that open into gentler thoughts */
   private paintKnot(p: Sprout) {
-    const { ctx, t } = this, w = this.save.worry; if (!w) return;
+    const { ctx, t } = this, w = this.save.worry; if (!w || this.knotUp) return;
     const d = (0.95 + (p.y - 600) / 300 * 0.3) * 1.35, g = outBack((t - p.t0) / 0.9), n = w.opened.filter(Boolean).length, all = n === 3, done = w.stage === 'done';
     const warm: RGB = [255, 236, 190], sy0 = p.y - 11 * d;
     ctx.save(); ctx.translate(p.x, p.y); ctx.scale(1, 0.35); shine(ctx, 0, 0, 100 * d, n ? warm : [170, 160, 235], 0.35 + 0.15 * n); ctx.restore();
@@ -692,7 +694,15 @@ export class Garden {
   /** begins with one open question, and lets the person's own answer lead */
   private async exploreWorry() {
     const w = this.save.worry; if (!w || this.worryBusy) return;
-    const part = await this.hooks.ask({ question: 'What part of this is weighing on you?', placeholder: 'or put it in your own words…', chips: worryParts(w.worry), note: this.privacyNote('your words travel to Claude so the garden can answer'), action: 'tell the garden', max: 240 });
+    const knot = this.planted.find(q => q.kind === 'worry');
+    const at = () => { const q = knot ?? { x: STONE.x, y: STONE.y }, d = (0.95 + (q.y - 600) / 300 * 0.3) * 1.35; return { x: this.sx(q.x), y: this.sy(q.y - 11 * d), w: 46 * d * this.s }; };
+    this.knotUp = true;
+    const part = await this.hooks.holdStone({
+      at, question: 'What part of this is weighing on you?', placeholder: 'or write it here, in your own words',
+      starters: worryParts(w.worry).map(c => [c, /something else/i.test(c) ? '' : null] as [string, string | null]),
+      note: this.privacyNote('your words travel to Claude so the garden can answer'), action: 'Tell the garden', max: 240,
+    });
+    this.knotUp = false;
     if (!part || !part.trim()) return;
     this.worryBusy = true;
     this.hooks.caption('', 'The garden is listening…', { hold: 60 });

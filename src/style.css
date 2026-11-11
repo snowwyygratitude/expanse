@@ -88,3 +88,6 @@ body:has(#stone:not([hidden])) #caption { opacity: 0; transition-duration: .25s;
 #stone .rock.heavy textarea { opacity: .55; transition: opacity .7s ease; }
 @media (prefers-reduced-motion: reduce) { #stone .rock { transition-duration: .2s; } }
 #stone.arming, #stone.arming * { pointer-events: none !important; }
+#stone .q { margin: 0; max-width: 440px; text-align: center; font: italic clamp(20px, 5.4vw, 25px)/1.3 var(--serif); text-shadow: 0 1px 12px rgba(8, 10, 40, .6); animation: fade .6s ease .15s both; }
+#stone .q[hidden] { display: none; }
+#stone.typing .q { font-size: 17px; opacity: .85; }

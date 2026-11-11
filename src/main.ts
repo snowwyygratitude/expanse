@@ -36,7 +36,8 @@ const hooks: Hooks = {
       const box = $('#stone'), rock = $('#stone .rock'), ta = $<HTMLTextAreaElement>('#stone textarea'), down = $<HTMLButtonElement>('#stone .down');
       const starters = $('#stone .starters'), small = $('#stone small');
       const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      ta.value = ''; ta.maxLength = o.max; down.disabled = true;
+      ta.value = ''; ta.maxLength = o.max; ta.placeholder = o.placeholder; down.textContent = o.action; down.disabled = true;
+      const q = $('#stone .q'); q.textContent = o.question ?? ''; q.hidden = !o.question;
       box.classList.remove('closing', 'typing'); rock.classList.remove('heavy');
       const stamp = Symbol(); (small as any).stamp = stamp;
       if (typeof o.note === 'string') small.textContent = o.note;
@@ -44,7 +45,10 @@ const hooks: Hooks = {
       starters.replaceChildren(); starters.hidden = false;
       for (const [label, start] of o.starters) {
         const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
-        b.onclick = () => { ta.value = start; refresh(); ta.focus(); ta.setSelectionRange(start.length, start.length); };
+        b.onclick = () => {
+          if (start === null) { void finish(label); return; } // the chip is the answer
+          ta.value = start; refresh(); ta.focus(); ta.setSelectionRange(start.length, start.length);
+        };
         starters.append(b);
       }
       const refresh = () => {
@@ -70,7 +74,7 @@ const hooks: Hooks = {
       const finish = async (v: string | null) => {
         if (over) return; over = true;
         ta.blur(); box.classList.add('closing');
-        if (v) { rock.classList.add('heavy'); o.onHeavy?.(); await new Promise(r => setTimeout(r, reduce ? 50 : 750)); }
+        if (v && o.onHeavy) { rock.classList.add('heavy'); o.onHeavy(); await new Promise(r => setTimeout(r, reduce ? 50 : 750)); }
         await fly(true).finished.catch(() => {});
         box.hidden = true; rock.getAnimations().forEach(an => an.cancel()); rock.classList.remove('heavy');
         resolve(v);
