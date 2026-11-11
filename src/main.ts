@@ -131,5 +131,6 @@ const add = (label: string, fn: () => void) => { const b = document.createElemen
 for (const e of [...BASE_EMOTIONS, 'hope' as const]) add(`Plant or lift the ${EMO[e].name} seed`, () => { if (e !== 'hope' || save.hopeUnlocked) garden.toggleSeed(e); });
 add('Look up at the skies you have found', () => garden.openSky());
 add('Set down a worry', () => void garden.askWorry());
+add('Let the worry go', () => garden.releaseWorry());
 add('Keep this world in a dewdrop', () => garden.bottleWorld());
 add('Toggle sound', () => garden.toggleSound());

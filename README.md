@@ -145,6 +145,11 @@ Worries
   names the belief that may be underneath and offers three kinder ones, or you
   write your own. The one you choose grows into a Belief Bloom that stays in
   the garden; touch it any day to read it again.
+- **Let it go.** Carry the worry back to the resting stone at any stage (from
+  the ledge, while it has its buds, or once it has opened). While you carry it,
+  the stone glows and says "let it go here". Let go over it and the worry
+  sinks into the spiral and leaves the garden; let go anywhere else and it
+  simply moves. Keyboard and screen-reader users have "Let the worry go".
 - Words come from Claude when available (`shared/prompts.mjs`), otherwise from
   eight hand-written themes in `src/worry.ts`. Model output is validated and
   any missing piece is filled from the local library; the scene can never be a

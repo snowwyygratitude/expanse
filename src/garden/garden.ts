@@ -591,16 +591,39 @@ export class Garden {
     k.data = { worry: w.worry, belief: w.belief, reframe }; persist(this.save);
     this.hooks.caption(`“${reframe}”`, 'It grows here now. Touch it whenever the old thought gets loud.', { hold: 12 });
   }
+  /** while a worry is being carried (from the ledge, or the one in the garden): where it would land */
+  private worryDrop(): [number, number] | null {
+    const d = this.drag; if (!d) return null;
+    if (d.type === 'seed' && d.kind === 'worry' && d.moved) return [this.wx(d.x), this.wy(d.y - (d.touch ? 44 : 0))];
+    if (d.type === 'move' && d.name === 'knot') return [d.o.x, d.o.y];
+    return null;
+  }
+  private overRest(wx: number, wy: number) { return ((wx - STONE.x) / (STONE.rx + 34)) ** 2 + ((wy - (STONE.y - 10)) / 52) ** 2 < 1; }
+  /** a worry given back to the resting stone leaves the garden altogether */
+  releaseWorry() {
+    const w = this.save.worry; if (!w || this.worryBusy) return;
+    const i = this.planted.findIndex(p => p.kind === 'worry'); if (i >= 0) this.planted.splice(i, 1);
+    this.save.worry = null; this.budT = [-9, -9, -9];
+    const top = STONE.y - 15;
+    this.burst(STONE.x, top, [200, 190, 245], 18, 70, 1);
+    for (let k = 0; k < 3; k++) this.rings.push({ x: STONE.x, y: top, t0: this.t + k * 0.25, dur: 1.4, max: 90 + k * 30, c: [210, 200, 255], flat: 0.32 });
+    this.sound.chime(0, 0.16, 1); this.sound.cue('settle');
+    this.setWorld({ x: STONE.x, y: top }, false);
+    this.quietUntil = this.t + 3;
+    persist(this.save);
+    this.hooks.caption('', 'It’s gone from the garden. You can always set down another.', { hold: 8 });
+  }
   /** The Resting Stone: a broad, mossy landmark in the foreground where worries are set down. It breathes. */
   private paintWorryStone() {
     const { ctx, t } = this, P = this.cur.pal, w = this.save.worry, { x, y, rx, ry } = STONE;
     this.grab(STONE, STONE.x, STONE.y - 15, 56, 'stone');
     const ph = t % 10, breath = this.worryBusy ? 0.5 + 0.5 * Math.sin(t * 6) : ph < 4 ? smooth(ph / 4) : 1 - smooth((ph - 4) / 6); // in for four, out for six
     if (this.stoneUp) return; // it is in the person's hands
-    const held = w?.stage === 'held', away = w?.stage === 'planted', inviting = !held && !away, lit = away ? 0.25 : 1;
+    const drop = this.worryDrop(), over = !!drop && this.overRest(drop[0], drop[1]);
+    const held = w?.stage === 'held', away = w?.stage === 'planted', inviting = !held && !away || !!drop, lit = drop ? (over ? 2 : 1.5) : away ? 0.25 : 1;
     const top = y - 15;
     ctx.fillStyle = 'rgba(8,14,36,.38)'; ell(ctx, x + 4, y + 7, rx * 1.12, ry * 0.9); ctx.fill();
-    if (inviting) { ctx.save(); ctx.translate(x, top); ctx.scale(1, 0.42); shine(ctx, 0, 0, rx * (1.9 + 0.5 * breath), [185, 172, 255], 0.3 + 0.4 * breath); ctx.restore(); }
+    if (inviting) { ctx.save(); ctx.translate(x, top); ctx.scale(1, 0.42); shine(ctx, 0, 0, rx * (drop ? (over ? 3.2 : 2.6) : 1.9 + 0.5 * breath), [185, 172, 255], drop ? (over ? 1 : 0.75) : 0.3 + 0.4 * breath); ctx.restore(); }
     // the side of the slab, then its top face
     const side = ctx.createLinearGradient(0, top, 0, y + ry); side.addColorStop(0, css(mix([110, 104, 150], P.skyTop, 0.25))); side.addColorStop(1, css(mix([44, 40, 76], P.skyTop, 0.3)));
     ctx.fillStyle = side; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI); ctx.lineTo(x - rx, top); ctx.ellipse(x, top, rx, ry, 0, Math.PI, 0, true); ctx.lineTo(x + rx, y); ctx.fill();
@@ -617,6 +640,14 @@ export class Garden {
     ctx.globalCompositeOperation = 'lighter'; carve(lit * (0.25 + 0.7 * breath), 2.4, '#e6dcff'); ctx.globalCompositeOperation = 'source-over';
     ctx.restore(); ctx.globalAlpha = 1;
     const label = (s: string, a: number) => { ctx.save(); ctx.translate(x, y + 34); ctx.scale(1, 0.34); glow(ctx, 0, 0, 86, [10, 14, 40], 0.5); ctx.restore(); text(ctx, s, x, y + 33, 14.5 / this.s, a, { italic: true }); };
+    if (drop) { // while a worry is carried, this is the only thing the stone says, above it where the worry won't cover it
+      const ly = top - 58 - 6 * Math.sin(t * 3);
+      ctx.save(); ctx.translate(x, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, 96, [10, 14, 40], 0.6); ctx.restore();
+      text(ctx, 'let it go here', x, ly, 15.5 / this.s, 1, { italic: true });
+      ctx.strokeStyle = `rgba(230,222,255,${over ? 0.9 : 0.5 + 0.3 * Math.sin(t * 4)})`; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.lineDashOffset = -t * 20;
+      ell(ctx, x, top, rx + 22, ry + 12); ctx.stroke(); ctx.setLineDash([]);
+      return;
+    }
     if (held) {
       if (this.seedBusy('worry')) return;
       const h = this.slotOf('worry');
@@ -808,6 +839,7 @@ export class Garden {
       const kind: SeedKind = d.kind, h = this.slotOf(kind), lift = d.touch ? 44 : 0;
       if (!d.moved && !cancel) { this.toggleSeed(kind); return; }
       const py = y - lift;
+      if (kind === 'worry' && !cancel && this.overRest(this.wx(x), this.wy(py))) { this.releaseWorry(); return; } // given back before it was ever planted
       if (cancel || py > this.ledgeTop - 4) { this.fly(kind, x, py, h.x, h.y, h.world, () => { }, 30); return; }
       // released over the world: it falls to the ground beneath and takes root
       const wx = this.wx(x), wy = this.wy(py);
@@ -826,6 +858,7 @@ export class Garden {
       }
       persist(this.save); return;
     }
+    if (d.type === 'move' && d.name === 'knot' && !cancel && this.overRest(d.o.x, d.o.y)) { this.releaseWorry(); return; }
     if (d.type === 'move') { this.settle(); this.burst(d.o.x, d.o.y, mix(this.cur.pal.light, WHITE, 0.5), 8, 60); this.sound.pop(); return; }
     if (d.type === 'sprout') { if (!d.moved) this.unplant(d.i); return; }
     if (d.type === 'pan' && !d.moved && !cancel) this.tap(x, y);
