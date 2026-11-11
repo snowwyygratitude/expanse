@@ -538,7 +538,7 @@ export class Garden {
   private bloomAt() { return { x: this.sx(WISH.x + 26), y: this.sy(WISH.y - 112), w: 60 * this.s }; }
   async askWish() {
     if (this.wishBusy || this.worryBusy || this.choice) return;
-    if (this.save.desires.length >= MAX_WISHES) { this.sound.chime(0); this.hooks.caption('Three wishes are growing', 'To whisper a new one, carry a wish tree back to the flower and let it go.', { hold: 9 }); return; }
+    if (this.save.desires.length >= MAX_WISHES) { this.sound.chime(0); this.hooks.caption('Your wish is growing', 'To whisper a new one, carry your wish tree back to the flower and let it go.', { hold: 9 }); return; }
     this.camGoal = null;
     const wish = await this.hooks.holdStone({
       look: 'bloom', at: () => this.bloomAt(), question: 'What are you hoping for?', placeholder: 'whisper it here',
@@ -1530,7 +1530,7 @@ export class Garden {
     ctx.restore();
     // its words, above the bloom, on a soft dark backing so they read over any sky or scenery
     const n = this.save.desires.length, carried = this.carriedTree();
-    const said = busy ? 'listening…' : carried ? 'let it go here' : n >= MAX_WISHES ? 'three wishes growing' : n ? 'whisper another wish' : 'whisper a wish';
+    const said = busy ? 'listening…' : carried ? 'let it go here' : n >= MAX_WISHES ? 'your wish is growing' : 'whisper a wish';
     if (carried) { // a wish tree is being carried: the flower opens to take it back
       const over = this.overFlower(carried.x, carried.y);
       shine(ctx, HX + 6, HY - 14, (over ? 150 : 115) * pulse, [230, 215, 255], over ? 1 : 0.75);

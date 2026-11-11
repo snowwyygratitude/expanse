@@ -139,10 +139,9 @@ Wishes
   a leaf of light; the tree fills out with every step and every day. The tree
   stays when feelings are planted (they take the sky; touching the tree with
   nothing planted brings its morning back) and can be moved like anything else.
-  Up to three wish trees can grow at once, each with its own blossoms and
-  leaves; the one you touched last holds the sky. With three growing, the
-  flower says so. Carry a wish tree back to the flower (it glows and says "let
-  it go here") to let that wish go and make room for another.
+  One wish tree grows at a time. While it grows, the flower says "your wish is
+  growing"; carry the tree back to the flower (it glows and says "let it go
+  here") to let the wish go and whisper a new one.
 - Words come from Claude when available (`DESIRE_SYSTEM` in
   `shared/prompts.mjs`, `/api/desire` on the server), otherwise from the themes
   in `src/desire.ts`. A wish's scene never has a storm, rain, a door or a gate.

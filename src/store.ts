@@ -14,7 +14,7 @@ export interface Planted { emo: Emotion | 'wish' | 'worry'; x: number; y: number
 
 /** a wish growing in the garden: a young tree, its three blossoms, and a leaf for every step taken toward it */
 export type Desire = DesireSpec & { id: string; x: number; y: number; born: number; opened: boolean[]; steps: { text: string; date: number }[]; active: boolean };
-export const MAX_WISHES = 3;
+export const MAX_WISHES = 1;
 
 export interface Save {
   v: 1;
@@ -22,7 +22,7 @@ export interface Save {
   wish: WishSpec | null;
   /** the worry currently in the garden: held (a stone to carry), planted (being unknotted) or done */
   worry: (WorrySpec & { stage: 'held' | 'planted' | 'done'; opened: boolean[]; explored?: boolean; part?: string }) | null;
-  /** up to three; the one whose morning fills the sky is `active` */
+  /** one wish tree at a time (kept as a list so older saves carry over) */
   desires: Desire[];
   discovered: Record<string, number>;   // world key -> first seen
   treasures: Record<string, number>;    // keepsake kind -> first found
@@ -48,7 +48,7 @@ const fresh = (): Save => ({
 export function load(): Save {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) { const s = JSON.parse(raw); if (s && s.v === 1) { if (s.desire && !s.desires) s.desires = [{ id: 'w' + Date.now().toString(36), ...s.desire }]; delete s.desire; return { ...fresh(), ...s }; } }
+    if (raw) { const s = JSON.parse(raw); if (s && s.v === 1) { if (s.desire && !s.desires) s.desires = [{ id: 'w' + Date.now().toString(36), ...s.desire }]; delete s.desire; if (Array.isArray(s.desires) && s.desires.length > 1) s.desires = [s.desires.find((d: any) => d.active) ?? s.desires[s.desires.length - 1]]; return { ...fresh(), ...s }; } }
   } catch { /* storage unavailable: the garden still works, it just forgets */ }
   return fresh();
 }
