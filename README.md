@@ -121,7 +121,27 @@ Discoveries
 - **The Memory Lantern** (Calm + Gratitude): write a thought, or nothing, and
   let it rise. It stays in your sky and can be read again.
 - **The Giving Tree** (Gratitude): pick the gifts.
-- **The Listening Flower**: whisper a wish; it grows a wish-seed to plant.
+- **The Listening Flower**: whisper a wish and the garden grows it (see
+  Wishes below).
+
+Wishes
+- **Whisper it.** Touch the Listening Flower. Its bloom opens and becomes the
+  place to write: "What are you hoping for?", with a few starting points.
+- **Reconnect with why.** One question follows, and can be skipped: "Imagine
+  it's already true. What do you feel first?"
+- **The garden answers at once.** A seed of light leaves the bloom, takes root
+  where you are looking and grows into a young wish tree, while a morning
+  scene composed from the wish comes up around it.
+- **Three blossoms.** Each opens into encouragement: what this wish says about
+  you, what is already true, and one first step.
+- **It grows as you act.** Touch "tell it what you did" and each step becomes
+  a leaf of light; the tree fills out with every step and every day. The tree
+  stays when feelings are planted (they take the sky; touching the tree with
+  nothing planted brings its morning back) and can be moved like anything else.
+  Whispering a new wish replaces it.
+- Words come from Claude when available (`DESIRE_SYSTEM` in
+  `shared/prompts.mjs`, `/api/desire` on the server), otherwise from the themes
+  in `src/desire.ts`. A wish's scene never has a storm, rain, a door or a gate.
 
 Worries
 - **Set it down.** Touch the resting stone ("set down a worry"). The garden

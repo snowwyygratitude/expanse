@@ -16,6 +16,7 @@ import { KEEPSAKES, drawKeepsake, drawSeed, ell, glow, shine, star4 } from './ar
 import { BeliefChoice, HiddenKind, HiddenWorld, OWN_WORDS, SERIF, SkyView, text } from './overlays';
 import { CRISIS_LINE, CRISIS_TITLE, composeWorry, worryParts } from '../worry';
 import { Gesture, SPECS } from './gesture';
+import { FEELINGS, WISH_STARTERS, composeDesire, stepLine } from '../desire';
 
 type Ctx = CanvasRenderingContext2D;
 type SeedKind = Emotion | 'wish' | 'worry';
@@ -23,7 +24,7 @@ type SeedKind = Emotion | 'wish' | 'worry';
 export interface Hooks {
   caption(title: string, line?: string, opts?: { fresh?: boolean; hold?: number }): void;
   /** starters: [label, beginning]; a null beginning makes the chip the answer itself */
-  holdStone(o: { at: () => { x: number; y: number; w: number }; note: string | Promise<string>; max: number; starters: [string, string | null][]; action: string; placeholder: string; question?: string; onHeavy?: () => void }): Promise<string | null>;
+  holdStone(o: { at: () => { x: number; y: number; w: number }; note: string | Promise<string>; max: number; starters: [string, string | null][]; action: string; placeholder: string; question?: string; onHeavy?: () => void; look?: 'bloom'; skip?: string }): Promise<string | null>;
   ask(o: { placeholder: string; note: string | Promise<string>; action: string; max: number; question?: string; chips?: string[] }): Promise<string | null>;
 }
 
@@ -55,7 +56,7 @@ export class Garden {
   private flash = 0; private flashC: RGB = WHITE;
   private worldT0 = 0; private giftTaken = false; private rainCount = 0; private memReleased = false;
   private glimmer = { x: 0, y: 0, found: false }; private foundGlimmers = new Set<string>();
-  private wishBusy = false; private stormFlash = 0; private nextStorm = 3;
+  private wishBusy = false; private desireT0 = -99; private blossomT = [-9, -9, -9]; private leafT = -9; private treeUp = false; private treePts: number[][] = []; private stormFlash = 0; private nextStorm = 3;
 
   private flowers: Flower[] = []; private rainBlooms: Flower[] = [];
   private mushrooms: { x: number; y: number; c: RGB; g: number; pop: number; size: number }[] = [];
@@ -225,7 +226,7 @@ export class Garden {
   }
   /** after a move: nothing is left standing in the water, and the arrangement is remembered */
   private settle() {
-    const all: { x: number; y: number }[] = [TREE, DOOR, STONE, WISH, ...this.flowers, ...this.mushrooms, ...this.puffs, ...this.planted, ...this.save.keepsakes];
+    const all: { x: number; y: number }[] = [TREE, DOOR, STONE, WISH, ...(this.save.desire ? [this.save.desire] : []), ...this.flowers, ...this.mushrooms, ...this.puffs, ...this.planted, ...this.save.keepsakes];
     for (const o of all) if (inLake(o.x, o.y, 14)) [o.x, o.y] = this.groundSpot(o.x, o.y);
     const em = this.planted.filter(p => !this.custom(p.kind)), newest = em[em.length - 1];
     for (const p of this.planted) if (this.blocked(p.x, p.y, -10)) {
@@ -294,6 +295,11 @@ export class Garden {
 
   /* ---------------- the world state machine ---------------- */
   private compose(): World {
+    const dz = this.save.desire;
+    if (dz?.active && !this.planted.length) {
+      const v = validateSpec(dz.scene);
+      if (v) { v.world.key = 'desire'; v.world.whisper = dz.reflect; const f = v.world.scene.f; f.passage = 0; f.door = 0; f.waterDoor = 0; f.storm = 0; return v.world; }
+    }
     const c = this.planted.find(p => this.custom(p.kind));
     if (c) {
       const v = validateSpec(c.kind === 'wish' ? this.save.wish : this.save.worry?.scene);
@@ -406,6 +412,7 @@ export class Garden {
       while (this.planted.length >= 2) send(this.planted.shift()!);
     }
     this.planted.push({ kind, x, y, t0: this.t });
+    if (this.save.desire) this.save.desire.active = false; // a planted feeling takes the sky; the wish tree stays
     if (kind === 'worry' && this.save.worry) { this.save.worry.stage = 'planted'; this.budT = [-9, -9, -9]; }
     this.save.everPlanted = true;
     const c = this.seedColor(kind);
@@ -512,7 +519,7 @@ export class Garden {
     const toHex = (c: RGB) => '#' + c.map(v => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')).join('');
     const p = this.world.scene.pal;
     const k = this.grant('worlddrop', this.cam.x + this.vw * (0.3 + Math.random() * 0.4), 740 + Math.random() * 60);
-    k.data = { name: this.world.name, emotions: this.world.custom ? null : this.world.emotions, wish: this.world.custom ? this.save.wish : null, sky: [toHex(p.skyTop), toHex(p.skyMid), toHex(p.skyLow)] };
+    k.data = { name: this.world.name, emotions: this.world.custom ? null : this.world.emotions, wish: this.world.custom ? (this.world.key === 'desire' ? this.save.desire?.scene ?? null : this.save.wish) : null, sky: [toHex(p.skyTop), toHex(p.skyMid), toHex(p.skyLow)] };
     persist(this.save);
     this.hooks.caption('World Dewdrop', `“${this.world.name}” is kept in a drop of dew. Touch it any day to return.`, { hold: 7 });
   }
@@ -527,18 +534,140 @@ export class Garden {
     }
     this.hooks.caption(KEEPSAKES[k.kind]?.name ?? '', `found in ${k.from || 'the garden'}`, { hold: 4 });
   }
-  private async askWish() {
-    if (this.wishBusy) return;
-    const words = await this.hooks.ask({ placeholder: 'describe a garden you wish for…', note: this.privacyNote('your words travel to Claude to shape the scene'), action: 'whisper it', max: 240 });
-    if (!words || !words.trim()) return;
+  /* ---------------- wishes: whisper one, and the garden grows it ---------------- */
+  private bloomAt() { return { x: this.sx(WISH.x + 26), y: this.sy(WISH.y - 112), w: 60 * this.s }; }
+  async askWish() {
+    if (this.wishBusy || this.worryBusy || this.choice) return;
+    this.camGoal = null;
+    const wish = await this.hooks.holdStone({
+      look: 'bloom', at: () => this.bloomAt(), question: 'What are you hoping for?', placeholder: 'whisper it here',
+      starters: WISH_STARTERS, action: 'Whisper it', max: 300, note: this.privacyNote('your words travel to Claude so the garden can answer'),
+    });
+    if (!wish || !wish.trim()) return;
+    // one gentle question to reconnect with why; it can be skipped
+    const felt = await this.hooks.holdStone({
+      look: 'bloom', at: () => this.bloomAt(), question: 'Imagine it’s already true. What do you feel first?', placeholder: 'or say it in your own words',
+      starters: [...FEELINGS.map(f => [f, null] as [string, null]), ['in my own words', ''] as [string, string]], action: 'That’s the feeling', skip: 'skip this', max: 120,
+      note: this.privacyNote('your words travel to Claude so the garden can answer'),
+    });
     this.wishBusy = true;
     this.hooks.caption('', 'The flower is listening…', { hold: 60 });
-    const out = await composeWish(words, { discovered: Object.keys(this.save.discovered).map(k => RECIPES[k]?.name ?? k), treasures: Object.keys(this.save.treasures) });
+    const out = await composeDesire(wish, felt ?? undefined);
     this.wishBusy = false;
-    const i = this.planted.findIndex(p => p.kind === 'wish'); if (i >= 0) this.unplant(i);
-    this.save.wish = out.spec; persist(this.save);
-    this.burst(WISH.x, WISH.y - 70, [220, 200, 255], 26, 140, 1); this.sound.bloom();
-    this.hooks.caption('A wish-seed has formed', 'Carry it into the garden.', { hold: 8 });
+    if (out === 'crisis') { this.hooks.caption(CRISIS_TITLE, CRISIS_LINE, { hold: 120 }); return; }
+    // the seed of light leaves the bloom, drifts down, and takes root where you are looking
+    const old = this.save.desire;
+    if (old) { this.burst(old.x, old.y - 50, [225, 210, 255], 22, 90, 1); this.save.desire = null; }
+    this.planted.forEach(p => this.goHome(p)); this.planted = [];
+    // in view, and as far as it can be from the flower, the resting stone and the great tree, so nothing crowds it
+    const near = (x: number) => Math.min(Math.abs(x - STONE.x), Math.abs(x - WISH.x - 20), Math.abs(x - TREE.x) + 30, Math.abs(x - LAKE.x) - LAKE.rx + 90);
+    const spot = [0.5, 0.4, 0.6, 0.3, 0.7, 0.22, 0.78].map(q => this.cam.x + this.vw * q).sort((a, b) => near(b) - near(a))[0];
+    const [tx, ty] = this.freeSpot(clamp(spot, 120, WORLD_W - 120), 728 + Math.random() * 10);
+    this.burst(WISH.x + 26, WISH.y - 112, [230, 215, 255], 26, 140, 1); this.sound.bloom();
+    this.fly('wish', this.sx(WISH.x + 26), this.sy(WISH.y - 112), tx, ty, true, () => {
+      this.save.desire = { ...out, x: tx, y: ty, born: Date.now(), opened: [false, false, false], steps: [], active: true };
+      this.desireT0 = this.t; this.blossomT = [-9, -9, -9];
+      this.flash = 1; this.flashC = [255, 236, 200]; this.sound.plant(); this.sound.cue('sprout');
+      this.burst(tx, ty, [255, 236, 200], this.rm ? 8 : 30, 170); this.burst(tx, ty, WHITE, this.rm ? 3 : 12, 120, 1);
+      this.rings.push({ x: tx, y: ty, t0: this.t, dur: 1.2, max: 170, c: [255, 232, 190], flat: 0.32 });
+      this.save.everPlanted = true;
+      this.setWorld({ x: tx, y: ty });
+      this.quietUntil = this.t + 5;
+    }, 220);
+  }
+  /** the wish's sky comes back when nothing else is planted and its tree is touched */
+  private wakeDesire() {
+    const d = this.save.desire; if (!d || d.active || this.planted.length) return;
+    d.active = true; this.setWorld({ x: d.x, y: d.y }, false);
+  }
+  private openBlossom(i: number, x: number, y: number) {
+    const d = this.save.desire; if (!d) return;
+    const first = !d.opened[i];
+    if (first) { d.opened[i] = true; this.blossomT[i] = this.t; persist(this.save); this.sound.whoosh(true); }
+    this.burst(x, y, [255, 226, 190], first ? 18 : 8, 80, 1); this.sound.chime(i * 2 + 1, 0.16, 2);
+    this.wakeDesire();
+    const b = d.blossoms[i];
+    this.hooks.caption(b.label, b.text, { hold: 26 });
+  }
+  /** it keeps growing as you act: every step told to the tree becomes a leaf */
+  async askStep() {
+    const d = this.save.desire; if (!d || this.wishBusy) return;
+    const k = (0.95 + (d.y - 600) / 300 * 0.3) * 1.4;
+    this.treeUp = true;
+    const said = await this.hooks.holdStone({
+      look: 'bloom', at: () => ({ x: this.sx(d.x), y: this.sy(d.y - 70 * k), w: 70 * k * this.s }),
+      question: 'What did you do toward your wish?', placeholder: 'even something small counts',
+      starters: [['I thought it through', null], ['I told someone', null], ['I made a start', null], ['something else', '']], action: 'Add a leaf', max: 160,
+      note: 'kept only in this garden, on this device',
+    });
+    this.treeUp = false;
+    if (!said || !said.trim() || this.save.desire !== d) return;
+    d.steps.push({ text: said.trim(), date: Date.now() }); this.leafT = this.t; persist(this.save);
+    this.wakeDesire();
+    this.burst(d.x, d.y - 80 * k, [190, 245, 190], 20, 90, 1); this.sound.cue('sprout'); this.sound.chime(4, 0.16, 2);
+    this.rings.push({ x: d.x, y: d.y, t0: this.t, dur: 1, max: 110, c: [200, 245, 200], flat: 0.32 });
+    this.hooks.caption(`“${said.trim()}”`, stepLine(d.steps.length), { hold: 12 });
+  }
+  /** the wish tree: young and luminous, three blossoms, one leaf of light for every step */
+  private paintWishTree() {
+    const { ctx, t } = this, dz = this.save.desire; if (!dz) return;
+    const P = this.cur.pal, x = dz.x, y = dz.y, d = 0.95 + (y - 600) / 300 * 0.3;
+    const days = (Date.now() - dz.born) / 864e5, n = dz.steps.length, stage = clamp(n * 0.09 + days * 0.04);
+    const g = this.rm ? 1 : outBack((t - this.desireT0) / 1.6), S = d * 1.65 * (0.8 + 0.4 * stage) * g, H = 56 * S, sway = Math.sin(t * 0.9 + x) * 2.2 * S;
+    const cx = x + sway, cy = y - H - 16 * S, warm: RGB = [255, 232, 196], breath = 0.5 + 0.5 * Math.sin(t * 1.4);
+    this.grab(dz, x, y - H * 0.55, 34 * S, 'wishtree'); this.grab(dz, cx, cy, 40 * S, 'wishtree');
+    if (g <= 0.02) return;
+    ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.34); shine(ctx, 0, 0, 96 * S, warm, 0.4 + 0.15 * breath); ctx.restore();
+    ctx.fillStyle = 'rgba(10,20,40,.3)'; ell(ctx, x, y + 2, 26 * S, 7 * S); ctx.fill();
+    // trunk: slender, with one small branch
+    ctx.strokeStyle = css(mix([150, 118, 168], P.light, 0.2)); ctx.lineCap = 'round'; ctx.lineWidth = (5 + 4 * stage) * S;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 6 * S, y - H * 0.5, cx, y - H); ctx.stroke();
+    ctx.lineWidth = 2.6 * S; ctx.beginPath(); ctx.moveTo(x - 2 * S, y - H * 0.55); ctx.quadraticCurveTo(x + 12 * S, y - H * 0.7, cx + 20 * S, cy + 12 * S); ctx.stroke();
+    // canopy: soft lights that fill in as it grows
+    shine(ctx, cx, cy, (70 + 14 * breath) * S, mix(warm, [226, 208, 255], 0.5), 0.55);
+    const puffs: [number, number, number, number][] = [[0, 0, 26, 0], [-22, 8, 19, 0], [22, 9, 19, 0], [-11, -18, 18, 0.15], [13, -19, 17, 0.3], [0, -32, 14, 0.55], [-32, -4, 13, 0.75], [33, -3, 13, 0.75]];
+    for (const [px, py, r, at] of puffs) {
+      const a = clamp((stage - at) / 0.15 + (at === 0 ? 1 : 0)); if (a <= 0) continue;
+      const lg = ctx.createRadialGradient(cx + (px - r * 0.3) * S, cy + (py - r * 0.35) * S, 1, cx + px * S, cy + py * S, r * S);
+      lg.addColorStop(0, css(mix([255, 250, 240], P.light, 0.2), 0.98 * a)); lg.addColorStop(0.6, css(mix([226, 206, 255], P.light, 0.15), 0.95 * a)); lg.addColorStop(1, css([176, 150, 235], 0.92 * a));
+      ctx.fillStyle = lg; ell(ctx, cx + px * S, cy + py * S, r * S * a, r * S * a * 0.94); ctx.fill();
+    }
+    // a leaf of light for every step taken
+    for (let i = 0; i < Math.min(n, 36); i++) {
+      const ang = i * 2.39996 - 1.2, rad = (16 + (i % 6) * 6 + Math.floor(i / 6) * 3) * S, lx = cx + Math.cos(ang) * rad, ly = cy + Math.sin(ang) * rad * 0.8 + Math.sin(t * 1.3 + i) * 1.2;
+      const fresh = i === n - 1 ? outBack(clamp((t - this.leafT) / 0.8)) : 1, tw = 0.75 + 0.25 * Math.sin(t * 2 + i * 1.7);
+      shine(ctx, lx, ly, 11 * S * tw * fresh, [190, 250, 190], 0.75);
+      ctx.fillStyle = '#7fd88f'; ell(ctx, lx, ly, 5.2 * S * fresh, 2.7 * S * fresh, ang + 0.6); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.7)'; ell(ctx, lx - S, ly - S * 0.6, 1.3 * S * fresh, 0.8 * S * fresh, ang + 0.6); ctx.fill();
+    }
+    // three blossoms: what the wish says about you, what is already true, one first step
+    const bg = this.rm ? 1 : outBack((t - this.desireT0 - 1.2) / 0.9);
+    if (bg > 0.02) ([[-36, 8], [0, -36], [36, 8]] as [number, number][]).forEach(([bx, by], i) => {
+      const X = cx + bx * S, Y = cy + by * S, open = dz.opened[i], r = 9.5 * d * bg;
+      if (open) {
+        const o = outBack(clamp((t - this.blossomT[i]) / 0.7));
+        shine(ctx, X, Y, 30 * d * (0.9 + 0.1 * Math.sin(t * 2 + i)), [255, 214, 190], 0.85);
+        for (let k = 0; k < 5; k++) { const a = (k * TAU) / 5 - Math.PI / 2 + i; ctx.fillStyle = k % 2 ? '#ffd9e6' : '#ffc4d8'; ell(ctx, X + Math.cos(a) * r * 0.9 * o, Y + Math.sin(a) * r * 0.9 * o, r * 0.85 * o, r * 0.55 * o, a); ctx.fill(); }
+        ctx.fillStyle = '#ffe9a8'; ell(ctx, X, Y, r * 0.42, r * 0.42); ctx.fill();
+      } else {
+        const pu = 0.5 + 0.5 * Math.sin(t * 2.2 + i * 2.1);
+        shine(ctx, X, Y, 22 * d + 8 * pu, [255, 214, 200], 0.4 + 0.35 * pu);
+        ctx.strokeStyle = `rgba(255,236,226,${0.3 + 0.45 * pu})`; ctx.lineWidth = 1.3; ell(ctx, X, Y, 13 * d + 3 * pu, 13 * d + 3 * pu); ctx.stroke();
+        ctx.fillStyle = '#f29bb8'; ctx.beginPath(); ctx.moveTo(X, Y - r * 1.15); ctx.bezierCurveTo(X + r * 0.95, Y - r * 0.3, X + r * 0.7, Y + r, X, Y + r); ctx.bezierCurveTo(X - r * 0.7, Y + r, X - r * 0.95, Y - r * 0.3, X, Y - r * 1.15); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.5)'; ell(ctx, X - r * 0.25, Y - r * 0.25, r * 0.2, r * 0.4, 0.3); ctx.fill();
+      }
+      this.lateHit(X, Y, 20, () => this.openBlossom(i, X, Y)); this.treePts[i] = [this.sx(X), this.sy(Y)];
+    });
+    // one quiet line beneath it says what can be done here
+    const inv = this.invite() * clamp((t - this.desireT0 - 3) / 1.5);
+    if (inv > 0.02 && !this.treeUp && this.drag?.type !== 'move') {
+      const said = dz.opened.some(Boolean) ? 'tell it what you did' : 'touch a blossom', ly = cy - 66 * S;
+      ctx.save(); ctx.translate(x, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, 92, [10, 14, 40], 0.5 * inv); ctx.restore();
+      text(ctx, said, x, ly, 13.5 / this.s, 0.92 * inv, { italic: true });
+      if (dz.opened.some(Boolean)) this.lateHit(x, ly, 34, () => { this.sound.chime(1); void this.askStep(); });
+      this.treePts[3] = [this.sx(x), this.sy(ly)];
+    }
+    this.hit(x, y - H * 0.5, 26 * S, () => { this.sound.chime(1); if (dz.opened.some(Boolean)) void this.askStep(); else this.hooks.caption('', 'Three blossoms are waiting on your wish tree. Touch one.', { hold: 6 }); });
   }
   /* ---------------- worries: set one down, unknot it, choose new words ---------------- */
   async askWorry() {
@@ -864,6 +993,10 @@ export class Garden {
     if (d.type === 'pan' && !d.moved && !cancel) this.tap(x, y);
   }
   private tap(x: number, y: number) {
+    // among the words and buds that must win, the one nearest the finger (three blossoms sit close together on a phone)
+    let best: { fn: () => void } | null = null, bd = 1e9;
+    for (const h of this.late) { const d = Math.hypot(x - h.x, y - h.y); if (d < h.r && d < bd) { bd = d; best = h; } }
+    if (best) { best.fn(); return; }
     for (let i = this.hits.length - 1; i >= 0; i--) { const h = this.hits[i]; if (Math.hypot(x - h.x, y - h.y) < h.r) { h.fn(); return; } }
     if (y > this.ledgeTop) { // a tap on a planted seed's empty spot calls that one seed home; the others stay
       const gap = this.slots.length > 1 ? this.slots[1].x - this.slots[0].x : this.W;
@@ -1266,6 +1399,7 @@ export class Garden {
     list.push([TREE.y, () => this.paintTree()]);
     if (f.door > 0.03) list.push([DOOR.y, () => this.paintDoor()]);
     list.push([WISH.y, () => this.paintWishFlower()]);
+    if (this.save.desire) list.push([this.save.desire.y, () => this.paintWishTree()]);
     list.push([STONE.y, () => this.paintWorryStone()]);
     if (f.garlands > 0.05) for (const [px, py, ph] of [[330, 668, 110], [990, 668, 112], [1430, 652, 108]]) list.push([py, () => { ctx.strokeStyle = css(mix([120, 90, 70], DARK, 0.2)); ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - ph * outBack(f.garlands)); ctx.stroke(); }]);
     for (const p of this.puffs) if (p.g > 0.03) list.push([p.y, () => this.paintPuff(p)]);
@@ -1374,13 +1508,13 @@ export class Garden {
     if (!this.rm) for (let i = 0; i < 3; i++) { const q = (t * (busy ? 1.2 : 0.35) + i / 3) % 1; ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - q)})`; ell(ctx, hx + 16 + Math.sin(q * 6 + i) * 6, hyy - 30 - q * 46, 2, 2); ctx.fill(); }
     ctx.restore();
     // its words, above the bloom, on a soft dark backing so they read over any sky or scenery
-    const said = busy ? 'listening…' : this.save.wish ? (this.seedBusy('wish') ? '' : 'plant your wish') : 'whisper a wish';
+    const said = busy ? 'listening…' : this.save.desire ? 'whisper a new wish' : 'whisper a wish';
     if (said) {
       const ly = HY - 62;
       const inv = this.invite();
       ctx.save(); ctx.translate(HX + 4, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, said.length * 5.2 + 34, [10, 14, 40], 0.55 * inv); ctx.restore();
       text(ctx, said, HX + 4, ly, 14.5 / this.s, 0.95 * inv, { italic: true });
-      if (!busy && !this.save.wish) this.lateHit(HX + 4, ly, 34, () => { this.sound.chime(1); void this.askWish(); });
+      if (!busy) this.lateHit(HX + 4, ly, 34, () => { this.sound.chime(1); void this.askWish(); });
     }
     this.grab(WISH, HX + 6, HY - 14, 40, 'wish'); this.grab(WISH, x, y - 24, 26, 'wish');
     this.lateHit(HX + 6, HY - 14, 40, () => { this.sound.chime(1); void this.askWish(); }); // wins over butterflies passing in front

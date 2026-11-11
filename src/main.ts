@@ -38,6 +38,8 @@ const hooks: Hooks = {
       const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
       ta.value = ''; ta.maxLength = o.max; ta.placeholder = o.placeholder; down.textContent = o.action; down.disabled = true;
       const q = $('#stone .q'); q.textContent = o.question ?? ''; q.hidden = !o.question;
+      rock.classList.toggle('bloom', o.look === 'bloom'); box.setAttribute('aria-label', o.question ?? o.placeholder);
+      const skip = $<HTMLButtonElement>('#stone .skip'); skip.hidden = !o.skip; skip.textContent = o.skip ?? ''; skip.onclick = () => void finish(null);
       box.classList.remove('closing', 'typing'); rock.classList.remove('heavy');
       const stamp = Symbol(); (small as any).stamp = stamp;
       if (typeof o.note === 'string') small.textContent = o.note;
@@ -130,6 +132,8 @@ const nav = $('#a11y');
 const add = (label: string, fn: () => void) => { const b = document.createElement('button'); b.textContent = label; b.onclick = fn; nav.append(b); };
 for (const e of [...BASE_EMOTIONS, 'hope' as const]) add(`Plant or lift the ${EMO[e].name} seed`, () => { if (e !== 'hope' || save.hopeUnlocked) garden.toggleSeed(e); });
 add('Look up at the skies you have found', () => garden.openSky());
+add('Whisper a wish', () => void garden.askWish());
+add('Tell the wish tree what you did', () => void garden.askStep());
 add('Set down a worry', () => void garden.askWorry());
 add('Let the worry go', () => garden.releaseWorry());
 add('Keep this world in a dewdrop', () => garden.bottleWorld());

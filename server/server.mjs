@@ -15,7 +15,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
-import { WORRY_SYSTEM } from '../shared/prompts.mjs';
+import { WORRY_SYSTEM, DESIRE_SYSTEM } from '../shared/prompts.mjs';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const DIST = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
@@ -83,6 +83,23 @@ const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'appli
 http.createServer(async (req, res) => {
   try {
     if (req.url === '/api/health') return json(res, 200, { ai: hasKey });
+    if (req.url === '/api/desire' && req.method === 'POST') {
+      if (!client) return json(res, 503, { error: 'no_key' });
+      let raw = '';
+      for await (const chunk of req) { raw += chunk; if (raw.length > 8000) return json(res, 413, { error: 'too_long' }); }
+      const body = JSON.parse(raw || '{}');
+      if (typeof body.wish !== 'string' || !body.wish.trim()) return json(res, 400, { error: 'empty' });
+      try {
+        const felt = typeof body.feeling === 'string' && body.feeling.trim() ? `\n\nAsked "Imagine it's already true. What do you feel first?", they said: "${body.feeling.trim().slice(0, 120)}".` : '';
+        const spec = await askClaude(DESIRE_SYSTEM, `Their wish: "${body.wish.trim().slice(0, 300)}"` + felt);
+        return spec ? json(res, 200, spec) : json(res, 422, { error: 'no_scene' });
+      } catch (err) {
+        if (err instanceof Anthropic.RateLimitError) return json(res, 429, { error: 'rate_limited' });
+        if (err instanceof Anthropic.APIError) return json(res, 502, { error: 'api_error', status: err.status });
+        if (err instanceof SyntaxError) return json(res, 422, { error: 'no_scene' });
+        throw err;
+      }
+    }
     if ((req.url === '/api/wish' || req.url === '/api/worry') && req.method === 'POST') {
       const worry = req.url === '/api/worry';
       if (!client) return json(res, 503, { error: 'no_key' });

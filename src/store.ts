@@ -1,6 +1,7 @@
 /** Everything the garden remembers lives in localStorage on this device. */
 import type { Emotion, WishSpec } from './world/scene';
 import type { WorrySpec } from './worry';
+import type { DesireSpec } from './desire';
 
 export interface Keepsake {
   id: string; kind: string; x: number; y: number;
@@ -17,6 +18,8 @@ export interface Save {
   wish: WishSpec | null;
   /** the worry currently in the garden: held (a stone to carry), planted (being unknotted) or done */
   worry: (WorrySpec & { stage: 'held' | 'planted' | 'done'; opened: boolean[]; explored?: boolean; part?: string }) | null;
+  /** the wish growing in the garden: a young tree, its three blossoms, and a leaf for every step taken toward it */
+  desire: (DesireSpec & { x: number; y: number; born: number; opened: boolean[]; steps: { text: string; date: number }[]; active: boolean }) | null;
   discovered: Record<string, number>;   // world key -> first seen
   treasures: Record<string, number>;    // keepsake kind -> first found
   keepsakes: Keepsake[];
@@ -34,7 +37,7 @@ export interface Save {
 
 const KEY = 'expanse.garden.v1';
 const fresh = (): Save => ({
-  v: 1, planted: [], wish: null, worry: null, discovered: {}, treasures: {}, keepsakes: [], memories: [],
+  v: 1, planted: [], wish: null, worry: null, desire: null, discovered: {}, treasures: {}, keepsakes: [], memories: [],
   hopeUnlocked: false, everPlanted: false, layout: null, moveHint: false, worryUsed: false, sound: false, soundOff: false, lastVisit: '',
 });
 
