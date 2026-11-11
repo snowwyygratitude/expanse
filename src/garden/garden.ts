@@ -315,7 +315,7 @@ export class Garden {
     const returning = this.save.lastVisit && this.save.lastVisit !== today;
     this.save.lastVisit = today; persist(this.save);
     if (this.planted.length) this.hooks.caption(this.world.name, returning ? 'Your garden is ready for something new.' : this.world.whisper, { hold: 8 });
-    else this.hooks.caption(returning ? 'Your garden is ready for something new.' : 'What will you bring into your world today?', this.save.everPlanted ? '' : 'carry a seed into the garden', { hold: 1e9 });
+    else this.hooks.caption(returning ? 'Your garden is ready for something new.' : 'What is happening in your world today?', this.save.everPlanted ? '' : 'carry a seed into the garden', { hold: 1e9 });
   }
 
   /* ---------------- seeds: carrying, planting, unplanting ---------------- */
