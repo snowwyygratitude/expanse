@@ -26,8 +26,8 @@ export interface Hooks {
 
 const WORLD_W = 1800, HORIZON = 560, CX = 900;
 const TREE = { x: 700, y: 690 }, DOOR = { x: 900, y: 704 }, LAKE = { x: 1220, y: 735, rx: 255, ry: 62 };
-const STONE = { x: 872, y: 758, rx: 60, ry: 17 }, BUDS = [[-38, -40], [0, -68], [38, -40]];
-const WISH = { x: 1030, y: 790 }, WK = 1.45 /* the listening flower stands on the lake shore, drawn larger than life */, MEM = { x: 1130, y: 492 }, PASSAGE_X = 1050;
+const STONE = { x: 735, y: 764, rx: 60, ry: 17 } /* front-left, before the tree: the middle belongs to doors and paths */, BUDS = [[-38, -40], [0, -68], [38, -40]];
+const WISH = { x: 1030, y: 790 }, WK = 1.45 /* the listening flower stands on the lake shore, drawn larger than life */, MEM = { x: 1130, y: 492 }, PASSAGE_X = 976; /* the mountain gate sits between the tree and the listening flower */
 const GOLD: RGB = [245, 190, 80];
 const DARK: RGB = [14, 18, 44];
 const BLOOM_COLORS = ['#ff7aa2', '#ffb347', '#fff07a', '#ff8fd0', '#b98cff', '#ffffff', '#ff6f6f'].map(hex);
@@ -121,7 +121,7 @@ export class Garden {
     addFlowers(34, 'joy', BLOOM_COLORS); addFlowers(26, 'blue', [hex('#6fc2ff'), hex('#8fd8ff'), hex('#7f9dff')]);
     addFlowers(22, 'warm', WARM_COLORS); addFlowers(18, 'hope', [hex('#d8ff9a'), hex('#fff2a8')]);
     for (let i = 0; i < 10; i++) {
-      const [x, y] = spot(840, 1010, 705, 800);
+      const [x, y] = spot(860, 1000, 705, 790);
       this.mushrooms.push({ x, y, c: i % 2 ? hex('#ff7ad9') : hex('#6ff0e0'), g: 0, pop: 0, size: 7 + r() * 6 });
     }
     for (let i = 0; i < 9; i++) this.stonesA.push({ x: 0, y: 0, g: 0 });
@@ -156,11 +156,30 @@ export class Garden {
     }
   }
 
+  /** ground that stays clear so the landmarks are never covered: the Resting Stone and its words, the listening flower, the door, the trunk */
+  private blocked(x: number, y: number, pad = 0, door = true) {
+    // the stone's zone reaches back behind it too, so nothing grows up out of its far edge
+    if (((x - STONE.x) / (100 + pad)) ** 2 + ((y - STONE.y) / (62 + pad)) ** 2 < 1) return true;
+    if (((x - WISH.x - 8) / (82 + pad)) ** 2 + ((y - WISH.y + 10) / (48 + pad)) ** 2 < 1) return true;
+    // the door's spot is kept free even before it appears, or a seed could land where it is about to rise
+    if (door && Math.abs(x - DOOR.x) < 62 + pad && y > DOOR.y - 24 && y < DOOR.y + 26 + pad) return true;
+    return Math.abs(x - TREE.x) < 46 && Math.abs(y - TREE.y) < 24;
+  }
+  /** the nearest open ground to a point: seeds land here rather than on a landmark */
+  private freeSpot(x: number, y: number): [number, number] {
+    const [gx, gyv] = this.groundSpot(x, y);
+    if (!this.blocked(gx, gyv)) return [gx, gyv];
+    for (let r = 24; r < 480; r += 24) for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * TAU, [nx, ny] = this.groundSpot(gx + Math.cos(a) * r, gyv + Math.sin(a) * r * 0.45);
+      if (!this.blocked(nx, ny) && !inLake(nx, ny, 14) && nx > this.cam.x + 30 && nx < this.cam.x + this.vw - 30) return [nx, ny];
+    }
+    return [gx, gyv];
+  }
   /** the stepping stones always lead to wherever the door stands */
   private layStones() {
     this.stonesA.forEach((st, i) => {
       const q = i / 8, a = (1 - q) ** 2, b = 2 * q * (1 - q), c = q * q;
-      st.x = a * (DOOR.x + 85) + b * (DOOR.x + 115) + c * (DOOR.x + 8); st.y = a * (DOOR.y + 176) + b * (DOOR.y + 86) + c * (DOOR.y + 20);
+      st.x = a * (DOOR.x - 10) + b * (DOOR.x - 50) + c * (DOOR.x - 8); st.y = a * (DOOR.y + 176) + b * (DOOR.y + 86) + c * (DOOR.y + 20);
     });
   }
 
@@ -182,18 +201,19 @@ export class Garden {
   private settle() {
     const all: { x: number; y: number }[] = [TREE, DOOR, STONE, WISH, ...this.flowers, ...this.mushrooms, ...this.puffs, ...this.planted, ...this.save.keepsakes];
     for (const o of all) if (inLake(o.x, o.y, 14)) [o.x, o.y] = this.groundSpot(o.x, o.y);
+    for (const p of this.planted) if (this.blocked(p.x, p.y, -10)) [p.x, p.y] = this.freeSpot(p.x, p.y);
     this.layStones();
     const xy = (o: { x: number; y: number }) => [Math.round(o.x), Math.round(o.y)];
-    this.save.layout = { v: 2, tree: xy(TREE), door: xy(DOOR), stone: xy(STONE), wish: xy(WISH), lake: xy(LAKE), flowers: this.flowers.map(xy), mushrooms: this.mushrooms.map(xy) };
+    this.save.layout = { v: 3, tree: xy(TREE), door: xy(DOOR), stone: xy(STONE), wish: xy(WISH), lake: xy(LAKE), flowers: this.flowers.map(xy), mushrooms: this.mushrooms.map(xy) };
     this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y }));
     persist(this.save);
   }
   private applyLayout() {
-    const L = this.save.layout; if (!L) return;
+    const L = this.save.layout; if (!L || (L as any).v !== 3) return; // arrangements from before the landmarks found their places are let go
     const ok = (a: unknown): a is number[] => Array.isArray(a) && a.length === 2 && a.every(v => Number.isFinite(v));
     const put = (o: { x: number; y: number }, a: unknown) => { if (ok(a)) { o.x = clamp(a[0], 40, WORLD_W - 40); o.y = clamp(a[1], 600, 900); } };
     if (ok(L.lake)) { const dx = clamp(L.lake[0], 300, WORLD_W - 300) - LAKE.x, dy = clamp(L.lake[1], 690, 800) - LAKE.y; LAKE.x += dx; LAKE.y += dy; MEM.x += dx; MEM.y += dy; for (const l of this.lanterns) { l.x += dx; l.y += dy; } }
-    put(TREE, L.tree); put(DOOR, L.door); put(STONE, L.stone); if ((L as any).v === 2) put(WISH, L.wish);
+    put(TREE, L.tree); put(DOOR, L.door); put(STONE, L.stone); put(WISH, L.wish);
     if (Array.isArray(L.flowers) && L.flowers.length === this.flowers.length) this.flowers.forEach((f, i) => put(f, L.flowers[i]));
     if (Array.isArray(L.mushrooms) && L.mushrooms.length === this.mushrooms.length) this.mushrooms.forEach((m, i) => put(m, L.mushrooms[i]));
     this.layStones();
@@ -314,7 +334,7 @@ export class Garden {
   }
   /** plant a seed at a world position; this is the heart of the whole thing */
   private plant(kind: SeedKind, x: number, y: number) {
-    [x, y] = this.groundSpot(x, y);
+    [x, y] = this.freeSpot(x, y);
     const send = (p: Sprout) => this.goHome(p);
     if (this.custom(kind)) { this.planted.forEach(send); this.planted = []; }
     else {
@@ -355,7 +375,7 @@ export class Garden {
     setTimeout(() => {
       if (this.seedBusy(kind) || (kind === 'wish' && !this.save.wish) || (kind === 'worry' && this.save.worry?.stage !== 'held')) return;
       const h = this.slotOf(kind);
-      const [tx, ty] = this.groundSpot(this.cam.x + this.vw * (0.3 + Math.random() * 0.4), 690 + Math.random() * 90);
+      const [tx, ty] = this.freeSpot(this.cam.x + this.vw * (0.25 + Math.random() * 0.5), 690 + Math.random() * 90);
       this.fly(kind, h.world ? this.sx(h.x) : h.x, h.world ? this.sy(h.y) : h.y, tx, ty, true, () => this.plant(kind, tx, ty), 200);
     }, delay);
   }
@@ -666,7 +686,7 @@ export class Garden {
       if (cancel || py > this.ledgeTop - 4) { this.fly(kind, x, py, h.x, h.y, h.world, () => { }, 30); return; }
       // released over the world: it falls to the ground beneath and takes root
       const wx = this.wx(x), wy = this.wy(py);
-      const [tx, ty] = this.groundSpot(wx, wy > gy(wx) + 40 ? wy : 650 + Math.random() * 70);
+      const [tx, ty] = this.freeSpot(wx, wy > gy(wx) + 40 ? wy : 650 + Math.random() * 70);
       if (Math.abs(ty - wy) < 12) this.plant(kind, tx, ty);
       else this.fly(kind, x, py, tx, ty, true, () => this.plant(kind, tx, ty), 0);
       return;
@@ -995,7 +1015,7 @@ export class Garden {
     if (k > 0.3) for (const q of [-0.6, 0, 0.6]) this.grab(LAKE, LAKE.x + q * rx, LAKE.y, ry * 0.95, 'lake');
     // stepping stones
     const stone = (x: number, y: number, g: number, i: number) => {
-      if (g < 0.02) return; const d = (0.55 + (y - 560) / 420) * outBack(g);
+      if (g < 0.02 || this.blocked(x, y, -8, false)) return; const d = (0.55 + (y - 560) / 420) * outBack(g);
       ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.4); shine(ctx, 0, 0, 40 * d, P.light, 0.5 * g * (0.7 + 0.3 * Math.sin(t * 2 - i * 0.6))); ctx.restore();
       ctx.fillStyle = css(mix([205, 205, 225], P.light, 0.35), g); ell(ctx, x, y, 17 * d, 6.5 * d); ctx.fill();
       ctx.fillStyle = css(WHITE, 0.4 * g); ell(ctx, x - 3 * d, y - 1.5 * d, 9 * d, 2.6 * d); ctx.fill();
@@ -1340,7 +1360,7 @@ export class Garden {
       const y = d.y - (d.touch && d.moved ? 44 : 0), over = y < top;
       if (over && d.moved) { // where it will land
         const wx = this.wx(d.x), wy = this.wy(y), gyv = wy > gy(wx) + 40 ? wy : 680, c = this.seedColor(d.kind);
-        const [tx, ty] = this.groundSpot(wx, gyv);
+        const [tx, ty] = this.freeSpot(wx, gyv);
         this.layer(1); ctx.save(); ctx.translate(tx, ty); ctx.scale(1, 0.35); shine(ctx, 0, 0, 90 + 14 * Math.sin(t * 5), c, 0.75); ctx.strokeStyle = css(mix(c, WHITE, 0.5), 0.8); ctx.lineWidth = 2; ell(ctx, 0, 0, 34 + 6 * Math.sin(t * 5), 34 + 6 * Math.sin(t * 5)); ctx.stroke(); ctx.restore();
         if (Math.abs(ty - wy) > 20) { ctx.strokeStyle = css(c, 0.35); ctx.lineWidth = 1.5; ctx.setLineDash([3, 7]); ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(tx, ty); ctx.stroke(); ctx.setLineDash([]); }
         this.screen();
