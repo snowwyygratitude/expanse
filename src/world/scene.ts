@@ -88,8 +88,8 @@ export const EMO: Record<Emotion, EmotionDef> = {
   hope: {
     name: 'Hope', color: hex('#b6f08a'), deep: hex('#3fae7a'),
     pal: pal('#6ab2d6', '#bde4d2', '#ffe1ec', '#fff0b8', '#8ad295', '#c9efc0', '#5fbc86', '#a8e6e0'),
-    f: { rainbow: 0.8, hopeSprouts: 1, sun: 0.5, birds: 0.4, blooms: 0.35, motes: 0.5, lake: 0.35, clouds: 0.25 },
-    solo: 'The First Green', soloWhisper: 'Small lights are pushing up through the soil.',
+    f: { rainbow: 0.8, hopeSprouts: 1, sun: 0.5, birds: 0.4, blooms: 0.35, motes: 0.5, lake: 0.35, clouds: 0.25, passage: 1 },
+    solo: 'The First Green', soloWhisper: 'Small lights are pushing up through the soil, and a way has opened in the hills.',
     treasure: 'dawnsprout', chord: [0, 4, 7, 14],
   },
   fear: { // built only from effects the garden already had: mist, moonlight, small watchful lights
@@ -125,7 +125,7 @@ export const RECIPES: Record<string, Recipe> = {
   'sadness+courage': { name: 'The Stormlight', whisper: 'The storm is enormous and the tree is glowing right through it.', f: { storm: 1, rain: 0.9, treeGlow: 1, mountains: 1, clouds: 1, rays: 0.5, sun: 0.2 }, pal: { skyTop: '#151a40', skyMid: '#4b3d70', skyLow: '#e08a5c' } },
   'sadness+gratitude': { name: 'The Tender Rain', whisper: 'Warm flowers and blue flowers are growing in the same bed.', f: { rain: 0.6, treeGold: 0.7, warmBlooms: 1, blueBlooms: 1, gifts: 0.5, fireflies: 0.8 } },
   'sadness+hope': { name: 'First Light After Rain', whisper: 'It is still raining. Luminous things have started growing anyway.', f: { rain: 0.6, hopeSprouts: 1, rainbow: 0.7, blueBlooms: 0.8, sun: 0.4, rays: 0.6 } },
-  'curiosity+courage': { name: 'The Passage of Lights', whisper: 'A way has opened in the mountain. Small lights are showing where to step.', f: { passage: 1, path: 1, mountains: 1, door: 0, stars: 0.8, fireflies: 0.9, sun: 0.15, rays: 0.3 } },
+  'curiosity+courage': { name: 'The Rising Sparks', whisper: 'Sparks are lifting off the mountains and turning into floating lights.', f: { passage: 0, mountains: 1, door: 0, floaters: 1, motes: 1, stars: 0.8, fireflies: 0.9, sun: 0.15, rays: 0.5 } },
   'curiosity+gratitude': { name: 'The Cabinet of Small Wonders', whisper: 'The garden is showing you everything it has collected.', f: { floaters: 1, gifts: 1, door: 1, treeGold: 0.9, mushrooms: 1 } },
   'curiosity+hope': { name: 'The Seedling Stars', whisper: 'Some of the stars seem to be growing out of the ground.', f: { hopeSprouts: 1, stars: 1, door: 1, floaters: 0.8, aurora: 0.5 } },
   'courage+gratitude': { name: 'The Elder Tree', whisper: 'It grew this tall by being thankful for every storm.', f: { treeGlow: 1, treeGold: 1, mountains: 0.8, gifts: 0.8, birds: 0.7 } },

@@ -101,8 +101,9 @@ Discoveries
   each leading to a different keepsake.
 - **The Door Beneath Still Water** (Calm + Curiosity): wake the shell by
   popping bubbles.
-- **The Garden of Possibilities** (Courage + Curiosity): light three lamps
-  inside the mountain.
+- **The Garden of Possibilities** (Hope): a lit gateway opens in the hills;
+  inside, each of three lamps you light offers a possibility, and all three
+  together give a keepsake.
 - **The Rain Garden** (any rain): touch the rain and luminous flowers bloom
   where it lands. The fifth one leaves a Rainbloom and a seventh seed: Hope.
 - **The Memory Lantern** (Calm + Gratitude): write a thought, or nothing, and

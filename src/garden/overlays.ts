@@ -36,10 +36,12 @@ export function wrap(ctx: Ctx, s: string, size: number, maxW: number, italic = t
 export type HiddenKind = 'door' | 'lake' | 'passage';
 interface Spot { nx: number; ny: number; label?: string; on: boolean; a: number; give?: string[]; }
 
+/** what each lamp in the Garden of Possibilities says as it lights */
+const POSSIBLE = ['What if it goes better than you fear?', 'What if there is a way you have not seen yet?', 'What if you only need the next step?'];
 const HIDDEN_TEXT: Record<HiddenKind, [string, string]> = {
   door: ['A tiny world, folded behind the door', 'Two ways lead on.'],
   lake: ['Beneath the still water', 'Something sleeps in the shell. The bubbles might wake it.'],
-  passage: ['The Garden of Possibilities', 'Three lamps have been waiting for someone.'],
+  passage: ['The Garden of Possibilities', 'Three lamps, three ways forward. Light them one by one.'],
 };
 
 export class HiddenWorld {
@@ -101,7 +103,7 @@ export class HiddenWorld {
     ctx.save();
     ctx.beginPath(); ctx.arc(this.ox, this.oy, Math.max(0.1, R), 0, TAU); ctx.clip();
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    const stops = this.kind === 'door' ? ['#120c36', '#3a2a7a', '#2a9d96'] : this.kind === 'lake' ? ['#1d6a86', '#0f3c6a', '#07163a'] : ['#0b0820', '#2a1440', '#7a3440'];
+    const stops = this.kind === 'door' ? ['#120c36', '#3a2a7a', '#2a9d96'] : this.kind === 'lake' ? ['#1d6a86', '#0f3c6a', '#07163a'] : ['#141c3c', '#3a3f72', '#e6a59a'] /* dawn, for hope */;
     g.addColorStop(0, stops[0]); g.addColorStop(0.6, stops[1]); g.addColorStop(1, stops[2]);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
@@ -166,7 +168,7 @@ export class HiddenWorld {
       }
     }
     if (this.kind === 'passage') {
-      shine(ctx, cx, H * 1.05, W * 0.9, [255, 130, 90], 0.35);
+      shine(ctx, cx, H * 1.05, W * 0.9, [255, 205, 150], 0.45);
       ctx.fillStyle = '#07051a';
       for (let i = 0; i < 9; i++) { const x0 = (i / 8) * W, h = H * (0.1 + 0.12 * Math.abs(Math.sin(i * 2.7))); ctx.beginPath(); ctx.moveTo(x0 - W * 0.09, 0); ctx.lineTo(x0, h); ctx.lineTo(x0 + W * 0.09, 0); ctx.fill(); }
       ctx.beginPath(); ctx.moveTo(0, H); ctx.quadraticCurveTo(W * 0.5, H * 0.72, W, H); ctx.fill();
@@ -188,7 +190,8 @@ export class HiddenWorld {
       });
     }
 
-    const [title, sub] = HIDDEN_TEXT[this.kind];
+    const [title, base] = HIDDEN_TEXT[this.kind], lit = this.spots.filter(q => q.on).length;
+    const sub = this.kind === 'passage' && lit ? POSSIBLE[lit - 1] : base;
     const fade = clamp(this.k * 2 - 1);
     if (!this.revealed) {
       text(ctx, title, cx, H * 0.11, Math.min(22, W * 0.05), fade, { italic: true });
