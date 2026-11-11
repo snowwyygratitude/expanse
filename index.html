@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#1b2550" />
+  <title>Expanse: The Emotion Garden</title>
+</head>
+<body>
+  <canvas id="garden" aria-label="Your garden. Drag an emotion seed from the ledge at the bottom into the ground and the world transforms."></canvas>
+  <div id="mark" aria-hidden="true">expanse</div>
+  <div id="caption" aria-live="polite"><div class="fresh">a new sky found</div><h1></h1><p></p></div>
+  <form id="whisper" autocomplete="off" hidden>
+    <textarea rows="1" aria-label="Your words"></textarea>
+    <div class="row"><button type="submit" class="go"></button><button type="button" class="speak" hidden>speak instead</button><button type="button" class="no">never mind</button></div>
+    <small></small>
+  </form>
+  <nav id="a11y" aria-label="Garden controls"></nav>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
