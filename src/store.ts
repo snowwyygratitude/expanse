@@ -16,7 +16,7 @@ export interface Planted { emo: Emotion | 'wish' | 'worry'; x: number; y: number
 export type Desire = DesireSpec & { id: string; x: number; y: number; born: number; opened: boolean[]; steps: { text: string; date: number }[]; active: boolean };
 export const MAX_WISHES = 1;
 /** one visit day. Worries are kept as a few words only, never the whole text. */
-export interface Day { feelings: string[]; worry?: string; felt?: string; kept?: string; wish?: string; steps: string[]; }
+export interface Day { feelings: string[]; /** every worry set down that day, each with the words chosen for it */ worries?: { id: string; words: string; kept?: string }[]; /** older saves kept one worry per day */ worry?: string; felt?: string; kept?: string; wish?: string; steps: string[]; }
 /** a worry that was finished or let go, kept as a small stone: a few words and a date */
 export interface CairnStone { id: string; words: string; day: string; kept?: string; }
 export const fewWords = (t: string, n = 5) => { const w = t.trim().split(/\s+/); return w.length <= n ? w.join(' ') : w.slice(0, n).join(' ') + '…'; };
@@ -26,7 +26,7 @@ export interface Save {
   planted: Planted[];
   wish: WishSpec | null;
   /** the worry currently in the garden: held (a stone to carry), planted (being unknotted) or done */
-  worry: (WorrySpec & { stage: 'held' | 'planted' | 'done'; opened: boolean[]; explored?: boolean; part?: string; /** what the person said about each bud */ felt?: ('helps' | 'not quite' | null)[]; /** every version of each bud they have been shown */ seen?: string[][] }) | null;
+  worry: (WorrySpec & { stage: 'held' | 'planted' | 'done'; opened: boolean[]; explored?: boolean; part?: string; /** links it to its line in the journal */ jid?: string; /** what the person said about each bud */ felt?: ('helps' | 'not quite' | null)[]; /** every version of each bud they have been shown */ seen?: string[][] }) | null;
   /** one wish tree at a time (kept as a list so older saves carry over) */
   desires: Desire[];
   days: Record<string, Day>;            // YYYY-MM-DD -> what happened that day

@@ -440,6 +440,7 @@ export class Garden {
     const keys = Object.keys(this.save.days).sort().reverse();
     const days = keys.map(k => {
       const d = this.save.days[k], rows: [string, string][] = [];
+      for (const e of d.worries ?? []) rows.push(['set down', `“${e.words}”` + (e.kept ? `, and chose: “${e.kept}”` : '')]);
       if (d.worry) rows.push(['set down', `“${d.worry}”` + (d.kept ? `, and chose: “${d.kept}”` : '')]);
       else if (d.kept) rows.push(['chose new words', `“${d.kept}”`]);
       if (d.felt) rows.push(['the worry felt', d.felt]);
@@ -827,8 +828,9 @@ export class Garden {
     if (out === 'crisis') { this.hooks.caption(CRISIS_TITLE, CRISIS_LINE, { hold: 120 }); return; }
     const i = this.planted.findIndex(p => p.kind === 'worry');
     if (i >= 0) { if (this.save.worry) this.save.worry.stage = 'done'; this.unplant(i); }
-    this.today().worry = fewWords(out.worry);
-    this.save.worry = { ...out, stage: 'held', opened: [false, false, false], explored: false }; persist(this.save);
+    this.toCairn(); // a worry being replaced is not lost: it joins the cairn
+    const jid = uid(); (this.today().worries ??= []).push({ id: jid, words: fewWords(out.worry) });
+    this.save.worry = { ...out, jid, stage: 'held', opened: [false, false, false], explored: false }; persist(this.save);
     this.burst(STONE.x, STONE.y - 14, [180, 170, 240], 22, 90, 1); this.sound.chime(0, 0.16, 1);
     this.hooks.caption('It has a shape now', 'You do not have to keep holding it. Carry the stone into the garden and set it down.', { hold: 14 });
   }
@@ -884,7 +886,8 @@ export class Garden {
   }
   private finishWorry(reframe: string) {
     const w = this.save.worry, p = this.planted.find(q => q.kind === 'worry'); if (!w || !p) return;
-    w.stage = 'done'; this.today().kept = reframe; this.toCairn(reframe);
+    w.stage = 'done'; this.toCairn(reframe);
+    { const jid = (w as any).jid, entry = Object.values(this.save.days).flatMap(d => d.worries ?? []).find(e => e.id === jid); if (entry) entry.kept = reframe; else this.today().kept = reframe; }
     this.flash = 1; this.flashC = [255, 236, 190];
     this.wave = { x: p.x, y: p.y, t0: this.t };
     const k = this.grant('beliefbloom', p.x + 56, p.y + 14);
