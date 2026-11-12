@@ -121,5 +121,10 @@ body:has(#stone:not([hidden])) #caption { opacity: 0; transition-duration: .25s;
 #confirm button { font: 17px var(--serif); border: 0; border-radius: 999px; padding: 13px 26px; min-width: 220px; cursor: pointer; }
 #confirm .yes { background: #f4f0ff; color: #2a2550; box-shadow: 0 6px 20px rgba(0, 0, 20, .35); }
 #confirm .no { background: none; color: #fff; border: 1px solid rgba(255, 255, 255, .45); }
-#fadeout { position: fixed; inset: 0; z-index: 7; background: #0d1230; animation: fade .7s ease both; }
+#fadeout { position: fixed; inset: 0; z-index: 7; background: radial-gradient(ellipse at 50% 70%, #fff8ea, #f1e9ff 55%, #dcd6f4); animation: fade 1.3s ease both; }
+#dawn { position: fixed; inset: 0; z-index: 7; pointer-events: none; background: radial-gradient(ellipse at 50% 70%, #fff8ea, #f1e9ff 55%, #dcd6f4); animation: dawn 2.6s ease both; }
+#dawn[hidden] { display: none; }
+@keyframes dawn { from { opacity: 1; } to { opacity: 0; } }
+#drift { position: fixed; inset: 0; z-index: 7; pointer-events: none; overflow: hidden; }
+#drift .seed { position: absolute; width: 26px; height: 36px; opacity: 0; will-change: transform, opacity; }
 #fadeout[hidden] { display: none; }

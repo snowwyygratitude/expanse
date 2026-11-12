@@ -16,6 +16,12 @@ const fit = () => { input.style.height = 'auto'; input.style.height = input.scro
 input.addEventListener('input', fit);
 let capTimer = 0, swapTimer = 0;
 
+/** one dandelion seed: a feathery crown on a thin stalk */
+const SEED_SVG = (() => {
+  let rays = ''; for (let k = 0; k < 13; k++) { const a = Math.PI * (1.08 + k * 0.84 / 12), x = (Math.cos(a) * 11).toFixed(1), y = (Math.sin(a) * 11).toFixed(1); rays += `<line x1="0" y1="0" x2="${x}" y2="${y}"/><circle cx="${x}" cy="${y}" r=".9"/>`; }
+  return `<svg viewBox="-13 -13 26 36" width="26" height="36" aria-hidden="true"><g stroke="#fff" stroke-width=".7" fill="#fff" opacity=".9">${rays}</g><line x1="0" y1="0" x2="0" y2="18" stroke="#fff" stroke-width="1"/><ellipse cx="0" cy="20" rx="1.5" ry="2.4" fill="#d9cfae"/></svg>`;
+})();
+
 const hooks: Hooks = {
   /** floating words in the sky; they fade on their own */
   caption(title, line = '', opts = {}) {
@@ -103,7 +109,22 @@ const hooks: Hooks = {
     });
   },
   /** the screen goes quietly dark, then the page starts fresh */
-  restart() { $('#fadeout').hidden = false; setTimeout(() => location.reload(), 750); },
+  restart() {
+    // the dandelion lets go: seeds drift across the whole garden, the light comes up, and the page starts fresh
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, n = reduce ? 0 : 46;
+    const layer = document.createElement('div'); layer.id = 'drift'; document.body.append(layer);
+    for (let i = 0; i < n; i++) {
+      const sd = document.createElement('div'); sd.className = 'seed'; sd.innerHTML = SEED_SVG;
+      const x0 = 55 + Math.random() * 45, y0 = 8 + Math.random() * 10, dx = -(40 + Math.random() * 90), dy = 20 + Math.random() * 85, sc = 0.6 + Math.random() * 0.9, rot = (Math.random() - 0.5) * 90;
+      sd.style.left = x0 + 'vw'; sd.style.top = y0 + 'vh';
+      layer.append(sd);
+      sd.animate([{ transform: `translate(0,0) scale(${sc}) rotate(0deg)`, opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 0.9, offset: 0.75 }, { transform: `translate(${dx}vw, ${dy}vh) scale(${sc}) rotate(${rot}deg)`, opacity: 0 }],
+        { duration: 2600 + Math.random() * 1800, delay: Math.random() * 1400, easing: 'cubic-bezier(.3,.1,.4,1)', fill: 'both' });
+    }
+    try { sessionStorage.setItem('expanse.begun', '1'); } catch { /* */ }
+    setTimeout(() => { $('#fadeout').hidden = false; }, reduce ? 0 : 2200);
+    setTimeout(() => location.reload(), reduce ? 700 : 3600);
+  },
   /** one bare line to write on; resolves null if the person changes their mind */
   ask(o) {
     return new Promise(resolve => {
@@ -139,7 +160,13 @@ for (const ev of ['pointerup', 'touchend', 'click', 'keydown']) {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && sound.on && !save.soundOff) sound.wake(); });
 (window as any).__garden = garden;
-setTimeout(() => garden.idleCaption(), 700);
+// after beginning again, the new garden rises out of the light with one line of its own
+let begun = false; try { begun = sessionStorage.getItem('expanse.begun') === '1'; sessionStorage.removeItem('expanse.begun'); } catch { /* */ }
+if (begun) {
+  const dawn = $('#dawn'); dawn.hidden = false; setTimeout(() => (dawn.hidden = true), 2600);
+  setTimeout(() => hooks.caption('Fresh ground', 'Everything has drifted off. What is happening in your world today?', { hold: 9 }), 900);
+  setTimeout(() => garden.idleCaption(), 10500);
+} else setTimeout(() => garden.idleCaption(), 700);
 void detectComposer();
 
 // the same actions for keyboards and screen readers
@@ -152,6 +179,5 @@ add('Tell the wish tree what you did', () => void garden.askStep());
 add('Let a wish go', () => garden.releaseWish());
 add('Set down a worry', () => void garden.askWorry());
 add('Let the worry go', () => garden.releaseWorry());
-add('Keep this world in a dewdrop', () => garden.bottleWorld());
 add('Toggle sound', () => garden.toggleSound());
 add('Begin the garden again', () => void garden.beginAgain());

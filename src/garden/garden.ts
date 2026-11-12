@@ -519,12 +519,12 @@ export class Garden {
   async beginAgain() {
     if (this.wishBusy || this.worryBusy) return;
     const ok = await this.hooks.confirm({
-      title: 'Begin your garden again?',
-      line: 'Everything here will be cleared: the feelings you planted, your worries and wish, the keepsakes and the skies you found. This cannot be undone.',
-      yes: 'Begin again', no: 'Keep my garden',
+      title: 'Let the garden go to seed?',
+      line: 'Everything here will drift off on the wind: the feelings you planted, the worries you set down, your wish, and every sky you found. Nothing comes back once it has flown. What remains is fresh ground, and a morning to begin again.',
+      yes: 'Let it drift, and begin again', no: 'Keep my garden',
     });
     if (!ok) return;
-    wipe(); this.sound.chime(0, 0.16, 1); this.hooks.restart();
+    wipe(); this.sound.chime(4, 0.16, 2); this.sound.whoosh(true); setTimeout(() => this.sound.chime(7, 0.14, 2), 700); this.hooks.restart();
   }
   /** keep the current sky as a dewdrop in the garden */
   bottleWorld() {
@@ -1746,23 +1746,27 @@ export class Garden {
       drawSeed(ctx, d.kind, d.x, y, r * (d.moved ? 1.25 : 1.05), t, 1.6);
     }
     // the branch of charms
-    const charms: [string, () => void][] = [['skies', () => this.openSky()], ['keep', () => this.bottleWorld()], ['sound', () => this.toggleSound()], ['begin again', () => void this.beginAgain()]];
+    const charms: [string, () => void][] = [['skies', () => this.openSky()], ['sound', () => this.toggleSound()], ['begin again', () => void this.beginAgain()]];
     const bx = W - 8, by = 18, wood = mix([70, 50, 44], P.skyTop, 0.35);
-    ctx.strokeStyle = css(wood); ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx + 20, by - 12); ctx.quadraticCurveTo(bx - 100, by + 2, bx - 222, by + 20); ctx.stroke();
+    ctx.strokeStyle = css(wood); ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx + 20, by - 12); ctx.quadraticCurveTo(bx - 90, by + 2, bx - 196, by + 18); ctx.stroke();
     ctx.fillStyle = css(mix(P.foliage, DARK, 0.25));
-    for (let i = 0; i < 7; i++) { const lx = bx - 20 - i * 29, ly = by + 2 + i * 2.4; ell(ctx, lx, ly - 7, 9, 4, -0.5 + Math.sin(t + i) * 0.1); ctx.fill(); ell(ctx, lx - 12, ly + 6, 8, 3.6, 0.5 + Math.sin(t * 1.2 + i) * 0.1); ctx.fill(); }
+    for (let i = 0; i < 6; i++) { const lx = bx - 20 - i * 29, ly = by + 2 + i * 2.4; ell(ctx, lx, ly - 7, 9, 4, -0.5 + Math.sin(t + i) * 0.1); ctx.fill(); ell(ctx, lx - 12, ly + 6, 8, 3.6, 0.5 + Math.sin(t * 1.2 + i) * 0.1); ctx.fill(); }
     charms.forEach(([label, fn], i) => {
-      const hx = bx - 34 - i * 50 - (i === 3 ? 16 : 0), hy0 = by + 6 + i * 4, len = [34, 46, 36, 30][i], a = Math.sin(t * 1.1 + i * 2) * 0.09 * (label === 'sound' && this.sound.audible ? 2.2 : 1);
+      const hx = bx - 34 - i * 52 - (i === 2 ? 14 : 0), hy0 = by + 6 + i * 3, len = [34, 40, 30][i], a = Math.sin(t * 1.1 + i * 2) * 0.09 * (label === 'sound' && this.sound.audible ? 2.2 : 1);
       const cx = hx + Math.sin(a) * len, cy = hy0 + Math.cos(a) * len;
       ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx, hy0); ctx.lineTo(cx, cy - 8); ctx.stroke();
       if (label === 'skies') { shine(ctx, cx, cy + 2, 26, [255, 235, 160], 0.6 + 0.2 * Math.sin(t * 2)); ctx.fillStyle = '#fff1b8'; star4(ctx, cx, cy + 2, 10, a * 2, 0.36); ctx.fill(); }
       if (label === 'keep') drawKeepsake(ctx, 'worlddrop', cx, cy + 16, 0.62, t, { sky: [P.skyTop, P.skyMid, P.skyLow].map(c => css(c)) });
-      if (label === 'begin again') { // a single seed, the way every garden starts
-        shine(ctx, cx, cy + 4, 20, [200, 240, 190], 0.45);
-        ctx.fillStyle = '#c9a77a'; ell(ctx, cx, cy + 6, 6.5, 8.5, a); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,.45)'; ell(ctx, cx - 2, cy + 3, 1.6, 3, a + 0.3); ctx.fill();
-        ctx.strokeStyle = '#8fd39a'; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx, cy - 2); ctx.quadraticCurveTo(cx + 1, cy - 8, cx + 5, cy - 10); ctx.stroke();
-        ctx.fillStyle = '#8fd39a'; ell(ctx, cx + 6, cy - 10, 3.2, 1.6, -0.4); ctx.fill();
+      if (label === 'begin again') { // a dandelion clock: every seed on it is a new beginning
+        const sw = Math.sin(t * 0.9) * 0.12, px = cx + Math.sin(sw) * 4, py = cy + 2;
+        ctx.strokeStyle = 'rgba(200,230,190,.8)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(cx, cy - 12); ctx.quadraticCurveTo(cx + 2, cy - 4, px, py); ctx.stroke();
+        shine(ctx, px, py, 24, [255, 250, 235], 0.5 + 0.15 * Math.sin(t * 1.6));
+        ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 0.8; ctx.beginPath();
+        for (let k = 0; k < 22; k++) { const an = k * 2.39996 + sw, rr = 8.5 + (k % 3); ctx.moveTo(px, py); ctx.lineTo(px + Math.cos(an) * rr, py + Math.sin(an) * rr); }
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,.95)'; for (let k = 0; k < 22; k++) { const an = k * 2.39996 + sw, rr = 8.5 + (k % 3); ell(ctx, px + Math.cos(an) * rr, py + Math.sin(an) * rr, 0.9, 0.9); ctx.fill(); }
+        ctx.fillStyle = '#e9e2c8'; ell(ctx, px, py, 2.2, 2.2); ctx.fill();
+        if (!this.rm) for (let k = 0; k < 2; k++) { const q = (t * 0.22 + k * 0.5) % 1; ctx.fillStyle = `rgba(255,255,255,${0.7 * Math.sin(q * Math.PI)})`; ell(ctx, px + q * 46 + Math.sin(q * 9 + k) * 4, py - q * 22 + Math.cos(q * 7) * 3, 1.1, 1.1); ctx.fill(); } // a seed or two always drifting off
       }
       if (label === 'sound') {
         const on = this.sound.audible; if (on) shine(ctx, cx, cy + 6, 26, [170, 240, 230], 0.6);

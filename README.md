@@ -147,10 +147,15 @@ Wishes
   in `src/desire.ts`. A wish's scene never has a storm, rain, a door, a gate or lanterns.
 
 Beginning again
-- The branch at the top holds a fourth charm, a single seed: "begin again".
-  It asks first ("Begin your garden again?"), with "Keep my garden" as the
-  safe answer; "Begin again" clears everything this device remembers and
-  starts with a fresh garden. Keyboard users have "Begin the garden again".
+- The branch at the top holds three charms: skies, sound, and a dandelion
+  clock, "begin again". It asks first ("Let the garden go to seed?"), with
+  "Keep my garden" as the safe answer. Letting it go sends dandelion seeds
+  drifting across the garden, the screen fills with soft morning light, and a
+  fresh garden rises out of it ("Fresh ground"). Everything this device
+  remembered is cleared. Keyboard users have "Begin the garden again".
+- The old "keep" charm (saving the current sky as a dewdrop) is gone: "skies"
+  already returns you to any scene you have found. Dewdrops made before still
+  work.
 
 Worries
 - **Set it down.** Touch the resting stone ("set down a worry"). The garden
@@ -202,8 +207,8 @@ Keeping
   the door, three under the lake.
 - Keepsakes stay in the garden for good. Drag them anywhere. Drag one above
   the horizon to let it go.
-- The dewdrop charm keeps the current sky as a World Dewdrop in the garden;
-  touch it on any day to return to that world.
+- World Dewdrops made earlier stay in the garden; touch one on any day to
+  return to that world.
 - The star charm: look up. Every mix you have found is a constellation; touch
   one to return to it. One undiscovered pair glows as a suggestion.
 - The wind chime turns the soundscape on and off, and remembers your choice.
