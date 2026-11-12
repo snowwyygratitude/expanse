@@ -15,7 +15,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
-import { WORRY_SYSTEM, DESIRE_SYSTEM } from '../shared/prompts.mjs';
+import { WORRY_SYSTEM, DESIRE_SYSTEM, RETHINK_SYSTEM } from '../shared/prompts.mjs';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const DIST = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
@@ -83,6 +83,22 @@ const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'appli
 http.createServer(async (req, res) => {
   try {
     if (req.url === '/api/health') return json(res, 200, { ai: hasKey });
+    if (req.url === '/api/rethink' && req.method === 'POST') {
+      if (!client) return json(res, 503, { error: 'no_key' });
+      let raw = '';
+      for await (const chunk of req) { raw += chunk; if (raw.length > 8000) return json(res, 413, { error: 'too_long' }); }
+      const b = JSON.parse(raw || '{}'), str = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+      if (!str(b.worry, 400) || !str(b.label, 60)) return json(res, 400, { error: 'empty' });
+      const seen = Array.isArray(b.seen) ? b.seen.slice(0, 6).map(t => `- ${str(t, 240)}`).join('\n') : '';
+      try {
+        const out = await askClaude(RETHINK_SYSTEM, `What they set down: "${str(b.worry, 400)}"` + (str(b.part, 240) ? `\nThe part weighing on them most: "${str(b.part, 240)}"` : '') + `\nThe view: "${str(b.label, 60)}"\nWhat they were shown, which did not fit:\n${seen}`);
+        return out ? json(res, 200, out) : json(res, 422, { error: 'no_text' });
+      } catch (err) {
+        if (err instanceof Anthropic.APIError) return json(res, 502, { error: 'api_error', status: err.status });
+        if (err instanceof SyntaxError) return json(res, 422, { error: 'no_text' });
+        throw err;
+      }
+    }
     if (req.url === '/api/desire' && req.method === 'POST') {
       if (!client) return json(res, 503, { error: 'no_key' });
       let raw = '';

@@ -10,7 +10,7 @@
  */
 import { WishSpec, validateSpec } from './world/scene';
 import { askModel, currentComposer, Composer } from './ai';
-import { WORRY_SYSTEM } from '../shared/prompts.mjs';
+import { WORRY_SYSTEM, RETHINK_SYSTEM } from '../shared/prompts.mjs';
 
 export interface Petal { label: string; text: string; }
 export interface WorrySpec {
@@ -252,4 +252,33 @@ export async function composeWorry(worry: string, part?: string): Promise<WorryS
   const prompt = `${WORRY_SYSTEM}\n\nWhat they set down: "${text}"` + (said ? `\n\nAsked "What part of this is weighing on you?", they said: "${said}". Let that part lead everything you write.` : '');
   const raw = await askModel('/api/worry', { worry: text, part: said }, prompt);
   return raw ? validateWorry(raw, text, by, said) : composeWorryLocally(text, said);
+}
+
+/* ---------- "not quite": another way of seeing one bud ---------- */
+const OTHER_VIEWS: string[][] = [
+  ['Right now this is a thought about what might happen. It has not happened, and a thought is not a forecast.',
+    'The facts you have are fewer than the fears. It is all right to stay with only the facts for a moment.',
+    'What is certain right now: you noticed this, you named it, and you set it down. That is already something.',
+    'Feelings are real information about what matters to you. They are not always accurate about what will happen.'],
+  ['A friend would say: I can see how much this matters to you, and I am not going anywhere.',
+    'A friend would say: you are being harder on yourself than you would ever be on me.',
+    'A friend would say: you do not have to have this figured out to deserve some rest tonight.',
+    'A friend would say: tell me about it. You do not have to carry it in silence.'],
+  ['Nothing needs to be solved right now. One slow breath, in for four and out for six, is enough for this moment.',
+    'Write the worry down in one sentence, then close the page. It will keep until you choose to look again.',
+    'Tell one person you trust a little of this. Carried with someone, it weighs less.',
+    'Do one kind, ordinary thing for yourself in the next hour: water, a walk, a warm drink, an early night.'],
+];
+/** one bud said differently; never repeats what the person has already been shown */
+export async function rethinkPetal(w: WorrySpec & { part?: string }, i: number, seen: string[]): Promise<string> {
+  const local = () => OTHER_VIEWS[i].find(t => !seen.includes(t)) ?? OTHER_VIEWS[i][(seen.length) % OTHER_VIEWS[i].length];
+  if (currentComposer() === 'local') return local();
+  const label = PETAL_LABELS[i];
+  const prompt = `${RETHINK_SYSTEM}\n\nWhat they set down: "${w.worry}"` + (w.part ? `\nThe part weighing on them most: "${w.part}"` : '') +
+    `\nThe view: "${label}"\nWhat they were shown, which did not fit:\n${seen.map(t => `- ${t}`).join('\n')}`;
+  const raw = await askModel('/api/rethink', { worry: w.worry, part: w.part, label, seen }, prompt);
+  let text = clean(raw?.text, 220);
+  if (i === 1 && text && !/^a friend would say/i.test(text)) text = 'A friend would say: ' + text;
+  if (!text || seen.includes(text) || CRISIS.test(text)) return local();
+  return text;
 }

@@ -28,6 +28,11 @@ const hooks: Hooks = {
     clearTimeout(capTimer); clearTimeout(swapTimer);
     const show = () => {
       capTitle.textContent = title; capLine.textContent = line;
+      // a bud's words can be answered: "this helps" or "not quite"
+      const rp = $('#caption .reply'), ry = $<HTMLButtonElement>('#caption .reply .yes'), rn = $<HTMLButtonElement>('#caption .reply .no'), said = $('#caption .reply .said');
+      const r = opts.reply; rp.hidden = !r; said.textContent = r?.said ?? '';
+      ry.hidden = rn.hidden = !r || !!r.said;
+      if (r && !r.said) { ry.textContent = r.yes; rn.textContent = r.no; ry.onclick = () => r.onYes(); rn.onclick = () => r.onNo(); }
       capTitle.style.display = title ? '' : 'none';
       caption.classList.toggle('is-fresh', !!opts.fresh);
       if (title || line) caption.classList.add('show');

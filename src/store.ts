@@ -21,7 +21,7 @@ export interface Save {
   planted: Planted[];
   wish: WishSpec | null;
   /** the worry currently in the garden: held (a stone to carry), planted (being unknotted) or done */
-  worry: (WorrySpec & { stage: 'held' | 'planted' | 'done'; opened: boolean[]; explored?: boolean; part?: string }) | null;
+  worry: (WorrySpec & { stage: 'held' | 'planted' | 'done'; opened: boolean[]; explored?: boolean; part?: string; /** what the person said about each bud */ felt?: ('helps' | 'not quite' | null)[]; /** every version of each bud they have been shown */ seen?: string[][] }) | null;
   /** one wish tree at a time (kept as a list so older saves carry over) */
   desires: Desire[];
   discovered: Record<string, number>;   // world key -> first seen

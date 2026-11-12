@@ -128,3 +128,12 @@ body:has(#stone:not([hidden])) #caption { opacity: 0; transition-duration: .25s;
 #drift { position: fixed; inset: 0; z-index: 7; pointer-events: none; overflow: hidden; }
 #drift .seed { position: absolute; width: 26px; height: 36px; opacity: 0; will-change: transform, opacity; }
 #fadeout[hidden] { display: none; }
+
+/* ---- under a bud's words: two quiet choices, "this helps" and "not quite" ---- */
+#caption .reply { margin-top: 14px; display: flex; justify-content: center; align-items: center; gap: 10px; min-height: 40px; }
+#caption .reply[hidden] { display: none; }
+#caption.show .reply button { pointer-events: auto; }
+#caption .reply button { font: 15px var(--serif); color: #fff; padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .5); background: rgba(14, 16, 44, .35); cursor: pointer; text-shadow: none; animation: fade .6s ease both; }
+#caption .reply button:hover, #caption .reply button:focus-visible { background: rgba(255, 255, 255, .16); border-color: #fff; outline: none; }
+#caption .reply button[hidden], #caption .reply .said:empty { display: none; }
+#caption .reply .said { font-style: italic; font-size: 14.5px; opacity: .9; animation: fade .5s ease both; }

@@ -56,3 +56,11 @@ Answer with ONE JSON object and nothing else (no markdown fence):
 For the scene: it should feel like early morning with everything about to grow. Hope is the strongest material, joined by joy, and by calm, gratitude or curiosity where they fit. Never use fear or sadness, never use storm, rain, door, waterDoor, passage, mushrooms, path, floaters, gifts, lanterns or memoryLantern. Favour sun, rays, hopeSprouts, birds, motes, butterflies. The scene name is 2-5 words in title case.
 
 ${FEATURE_GUIDE}`;
+
+export const RETHINK_SYSTEM = `A person set a worry down in a small magical garden. The garden offered them a few gentle views of it, one at a time, and one of those views did not fit them. Write ONE different version of that same view.
+
+The three views are: "What is actually known" (separate what is known from what the worry predicts), "What a friend would say" (begins "A friend would say:" and is what someone who loves them would honestly say), "What is within reach" (one small, concrete thing within their control today, offered rather than instructed).
+
+Take a clearly different angle from what they were shown, and make it specific to what they actually wrote: echo one of their own words or details. 1-2 sentences, max 200 characters. Warm, plain, no exclamation marks, no minimising ("just", "simply", "at least", "don't worry"), no lecturing, no diagnosis or medical, legal or financial advice. If someone treated them badly, never suggest they share the blame.
+
+Answer with ONE JSON object and nothing else: {"text": string}`;

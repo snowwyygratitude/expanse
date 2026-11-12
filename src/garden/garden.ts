@@ -14,7 +14,7 @@ import { Sound } from '../audio';
 import { composeWish, readyComposer } from '../ai';
 import { KEEPSAKES, drawKeepsake, drawSeed, ell, glow, shine, star4 } from './art';
 import { BeliefChoice, HiddenKind, HiddenWorld, OWN_WORDS, SERIF, SkyView, text } from './overlays';
-import { CRISIS_LINE, CRISIS_TITLE, composeWorry, worryParts } from '../worry';
+import { CRISIS_LINE, CRISIS_TITLE, composeWorry, rethinkPetal, worryParts } from '../worry';
 import { Gesture, SPECS } from './gesture';
 import { FEELINGS, WISH_STARTERS, composeDesire, stepLine } from '../desire';
 
@@ -22,7 +22,7 @@ type Ctx = CanvasRenderingContext2D;
 type SeedKind = Emotion | 'wish' | 'worry';
 
 export interface Hooks {
-  caption(title: string, line?: string, opts?: { fresh?: boolean; hold?: number }): void;
+  caption(title: string, line?: string, opts?: { fresh?: boolean; hold?: number; reply?: { yes: string; no: string; said?: string; onYes: () => void; onNo: () => void } }): void;
   /** starters: [label, beginning]; a null beginning makes the chip the answer itself */
   holdStone(o: { at: () => { x: number; y: number; w: number }; note: string | Promise<string>; max: number; starters: [string, string | null][]; action: string; placeholder: string; question?: string; onHeavy?: () => void; look?: 'bloom'; skip?: string }): Promise<string | null>;
   confirm(o: { title: string; line: string; yes: string; no: string }): Promise<boolean>;
@@ -82,7 +82,7 @@ export class Garden {
   private drag: any = null; private pointerId = -1;
   private hits: { x: number; y: number; r: number; fn: () => void }[] = [];
   private slots: { kind: Emotion; x: number; y: number }[] = []; private seedR = 20; private ledgeTop = 0;
-  private choice: BeliefChoice | null = null; private worryBusy = false; private budT = [-9, -9, -9];
+  private choice: BeliefChoice | null = null; private worryBusy = false; private budGlow = [-9, -9, -9]; private rethinking = false; private budT = [-9, -9, -9];
   private hidden: HiddenWorld | null = null; private sky: SkyView | null = null;
   private auroraSprites: HTMLCanvasElement[] = [];
   private idle = 14; private guide = -1; /* firefly: -1 resting, else 0..1 along its flight */
@@ -729,12 +729,46 @@ export class Garden {
     this.hooks.caption('It has a shape now', 'You do not have to keep holding it. Carry the stone into the garden and set it down.', { hold: 14 });
   }
   private openBud(i: number, x: number, y: number) {
-    const w = this.save.worry; if (!w || w.opened[i]) return;
-    w.opened[i] = true; this.budT[i] = this.t; persist(this.save);
-    this.burst(x, y, [255, 236, 190], 16, 90, 1); this.sound.chime(i * 2 + 1, 0.16, 2); this.sound.whoosh(true);
-    this.rings.push({ x, y: y + 20, t0: this.t, dur: 1.2, max: 80, c: [255, 236, 190], flat: 0.32 });
-    const p = w.petals[i];
-    this.hooks.caption(p.label, p.text + (w.opened.every(Boolean) ? ' The stone has opened. Touch its light.' : ''), { hold: 26 });
+    const w = this.save.worry; if (!w) return;
+    if (!w.opened[i]) {
+      w.opened[i] = true; this.budT[i] = this.t; persist(this.save);
+      this.burst(x, y, [255, 236, 190], 16, 90, 1); this.sound.chime(i * 2 + 1, 0.16, 2); this.sound.whoosh(true);
+      this.rings.push({ x, y: y + 20, t0: this.t, dur: 1.2, max: 80, c: [255, 236, 190], flat: 0.32 });
+    } else { this.burst(x, y, [255, 236, 190], 6, 60, 1); this.sound.chime(i * 2 + 1, 0.12, 1); } // an open bud can be read again
+    this.showBud(i);
+  }
+  /** a bud's words, with two quiet choices under them */
+  private showBud(i: number, said?: string) {
+    const w = this.save.worry; if (!w) return;
+    const p = w.petals[i], tail = w.opened.every(Boolean) ? ' The stone has opened. Touch its light.' : '';
+    const felt = w.felt?.[i];
+    this.hooks.caption(p.label, p.text + tail, { hold: 30, reply: {
+      yes: 'this helps', no: 'not quite',
+      said: said ?? (felt === 'helps' ? 'You kept this one.' : undefined),
+      onYes: () => this.budHelps(i), onNo: () => void this.budNotQuite(i),
+    } });
+  }
+  private budHelps(i: number) {
+    const w = this.save.worry; if (!w) return;
+    (w.felt ??= [null, null, null])[i] = 'helps'; persist(this.save);
+    this.budGlow[i] = this.t; this.sound.chime(i * 2 + 3, 0.14, 2);
+    this.showBud(i, 'You kept this one.');
+  }
+  /** "not quite": the bud is said a different way, never repeating what was already shown */
+  private async budNotQuite(i: number) {
+    const w = this.save.worry; if (!w || this.rethinking) return;
+    const seen = ((w.seen ??= [[], [], []])[i] ??= []);
+    if (!seen.includes(w.petals[i].text)) seen.push(w.petals[i].text);
+    (w.felt ??= [null, null, null])[i] = 'not quite';
+    if (seen.length >= 4) { persist(this.save); this.showBud(i, 'Thank you for telling the garden. Not every view fits every worry, and that is all right.'); return; }
+    this.rethinking = true;
+    this.hooks.caption(w.petals[i].label, w.petals[i].text, { hold: 60, reply: { yes: '', no: '', said: 'Looking at it another way…', onYes: () => {}, onNo: () => {} } });
+    const text = await rethinkPetal(w, i, seen);
+    this.rethinking = false;
+    if (this.save.worry !== w) return;
+    w.petals[i] = { ...w.petals[i], text }; w.felt[i] = null; persist(this.save);
+    this.budT[i] = this.t; this.sound.chime(i * 2 + 1, 0.14, 2); this.sound.whoosh(true);
+    this.showBud(i);
   }
   private openChoice() {
     const w = this.save.worry; if (!w || this.choice) return;
@@ -851,6 +885,12 @@ export class Garden {
         shine(ctx, X, Y, 34 * d * (0.9 + 0.1 * Math.sin(t * 2 + i)), warm, 0.85);
         for (let k = 0; k < 6; k++) { const a = (k * TAU) / 6 + i; ctx.fillStyle = k % 2 ? '#fff6dc' : '#ffe2a8'; ell(ctx, X + Math.cos(a) * 6.5 * d * o, Y + Math.sin(a) * 6.5 * d * o, 5.6 * d * o, 3.4 * d * o, a); ctx.fill(); }
         ctx.fillStyle = '#fffdf0'; ell(ctx, X, Y, 3 * d, 3 * d); ctx.fill();
+        if (w.felt?.[i] === 'helps') { // kept: a small warm star stays on it
+          const k = outBack(clamp((t - this.budGlow[i]) / 0.6)), tw = 0.8 + 0.2 * Math.sin(t * 2.4 + i);
+          shine(ctx, X, Y - 2 * d, 26 * d * tw * (this.budGlow[i] < 0 ? 1 : k), [255, 228, 160], 0.7);
+          ctx.fillStyle = '#fff4c8'; star4(ctx, X + 8 * d, Y - 9 * d, 3.6 * d * (this.budGlow[i] < 0 ? 1 : k) * tw, t * 0.5, 0.3); ctx.fill();
+        }
+        this.lateHit(X, Y, 20, () => this.openBud(i, X, Y)); // read it again, or answer it
       } else {
         const pu = 0.5 + 0.5 * Math.sin(t * 2.2 + i * 2.1);
         shine(ctx, X, Y, 22 * d + 8 * pu, [200, 190, 255], 0.3 + 0.35 * pu);

@@ -175,6 +175,11 @@ Worries
 - **Unknot it.** The stone sits wrapped in bramble with three buds. Each opens
   into a gentler view: what is actually known, what a friend would say, what is
   within reach. Each one lets more light through the stone.
+- **Answer a bud.** Under each opened bud's words are two quiet choices:
+  "this helps" keeps it (a small warm star stays on that bud), and "not
+  quite" asks for a different view of the same bud, from Claude when
+  reachable (`RETHINK_SYSTEM`, `/api/rethink`) or from the garden's own
+  words, never repeating one already shown. Touch an open bud to read it again.
 - **Choose new words.** When all three are open, touch the stone's light. It
   names the belief that may be underneath and offers three kinder ones, or you
   write your own. The one you choose grows into a Belief Bloom that stays in
