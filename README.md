@@ -159,7 +159,7 @@ Coming back
 - **The cairn.** A worry that is finished or let go becomes a small stone
   stacked beside the resting stone. Touch the cairn to read each one (a few
   words and the day); each can be removed.
-- **Testing.** Tap the "expanse" wordmark three times quickly and the garden
+- **Testing.** Tap the small star in the top-left corner three times quickly and the garden
   behaves as if a night has passed.
 
 Beginning again

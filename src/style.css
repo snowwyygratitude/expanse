@@ -8,7 +8,8 @@ body { font-family: var(--serif); color: #fff; -webkit-user-select: none; user-s
 #garden:active { cursor: grabbing; }
 
 #mark { position: fixed; top: 16px; left: 18px; font-style: italic; font-size: 17px; letter-spacing: .14em; opacity: .78; text-shadow: 0 1px 10px rgba(8, 10, 40, .5); pointer-events: none; }
-#mark::before { content: '✦'; font-style: normal; font-size: 11px; margin-right: 7px; vertical-align: 2px; opacity: .9; }
+#mark::before { content: '✦'; font-style: normal; font-size: 13px; opacity: .9; }
+#mark { min-width: 44px; min-height: 34px; } /* only the small star remains; three quick taps on it still pretend a night has passed */
 
 #caption { isolation: isolate; position: fixed; left: 50%; top: max(13vh, 78px); width: min(88vw, 560px); transform: translate(-50%, 8px); text-align: center; pointer-events: none; opacity: 0; transition: opacity 1.1s ease, transform 1.4s ease; text-shadow: 0 1px 14px rgba(8, 10, 40, .65), 0 0 2px rgba(8, 10, 40, .4); }
 #caption.show { opacity: 1; transform: translate(-50%, 0); }
