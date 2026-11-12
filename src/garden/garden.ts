@@ -463,7 +463,7 @@ export class Garden {
     this.cairnI = (this.cairnI + 1) % c.length; const st = c[c.length - 1 - this.cairnI];
     this.sound.chime(this.cairnI % 5, 0.12, 1);
     this.hooks.caption(`“${st.words}”`, `Laid to rest ${this.dayLabel(st.day)}.` + (st.kept ? ` You chose: “${st.kept}”` : '') + (c.length > 1 ? ` (${this.cairnI + 1} of ${c.length}, touch again for the next)` : ''), { hold: 12, choices: [
-      { label: 'remove this stone', fn: () => { this.save.cairn = this.save.cairn.filter(q => q !== st); this.cairnI = -1; persist(this.save); this.sound.pop(); this.hooks.caption('', 'The stone is gone from the cairn.', { hold: 4 }); } },
+      { label: 'let go of this worry', fn: () => { this.save.cairn = this.save.cairn.filter(q => q !== st); this.cairnI = -1; persist(this.save); this.sound.pop(); this.hooks.caption('', 'You let it go. The cairn is a little lighter.', { hold: 4 }); } },
     ] });
   }
   private paintCairn() {
