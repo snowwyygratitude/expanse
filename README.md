@@ -213,7 +213,7 @@ Worries
   sinks into the spiral and leaves the garden; let go anywhere else and it
   simply moves. Keyboard and screen-reader users have "Let the worry go".
 - Words come from Claude when available (`shared/prompts.mjs`), otherwise from
-  eight hand-written themes in `src/worry.ts`. Model output is validated and
+  a library of hand-written themes in `src/worry.ts` (work, money, health, too much, not knowing, being judged, being treated badly, a falling-out, guilt, grief, loneliness, a breakup, losing work, the news, sleep, where life is going, and worry for someone close). Model output is validated and
   any missing piece is filled from the local library; the scene can never be a
   storm.
 - **This is a reflective toy, not treatment.** If the words suggest someone may
