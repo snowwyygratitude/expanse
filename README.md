@@ -144,7 +144,13 @@ Wishes
   here") to let the wish go and whisper a new one.
 - Words come from Claude when available (`DESIRE_SYSTEM` in
   `shared/prompts.mjs`, `/api/desire` on the server), otherwise from the themes
-  in `src/desire.ts`. A wish's scene never has a storm, rain, a door or a gate.
+  in `src/desire.ts`. A wish's scene never has a storm, rain, a door, a gate or lanterns.
+
+Beginning again
+- The branch at the top holds a fourth charm, a single seed: "begin again".
+  It asks first ("Begin your garden again?"), with "Keep my garden" as the
+  safe answer; "Begin again" clears everything this device remembers and
+  starts with a fresh garden. Keyboard users have "Begin the garden again".
 
 Worries
 - **Set it down.** Touch the resting stone ("set down a worry"). The garden

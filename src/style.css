@@ -108,3 +108,18 @@ body:has(#stone:not([hidden])) #caption { opacity: 0; transition-duration: .25s;
 #stone .rock.bloom textarea::placeholder { color: rgba(59, 42, 112, .62); }
 #stone .skip { background: none; border: 0; color: #fff; opacity: .8; font: italic 15px var(--serif); padding: 8px 14px; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgba(255, 255, 255, .4); }
 #stone .skip[hidden] { display: none; }
+
+/* ---- a quiet question before something that cannot be undone ---- */
+#confirm { position: fixed; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; padding: 24px; background: radial-gradient(ellipse at 50% 50%, rgba(12, 12, 40, .55), rgba(8, 8, 30, .82)); animation: fade .35s ease; }
+#confirm[hidden] { display: none; }
+#confirm .box { animation: arm .45s step-end; }
+@keyframes arm { from { pointer-events: none; } }
+#confirm .box { max-width: 360px; text-align: center; }
+#confirm h2 { margin: 0 0 10px; font: italic 400 clamp(22px, 6vw, 27px)/1.25 var(--serif); text-shadow: 0 1px 12px rgba(8, 10, 40, .6); }
+#confirm p { margin: 0 0 22px; font-size: 15.5px; line-height: 1.5; opacity: .9; }
+#confirm .row { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#confirm button { font: 17px var(--serif); border: 0; border-radius: 999px; padding: 13px 26px; min-width: 220px; cursor: pointer; }
+#confirm .yes { background: #f4f0ff; color: #2a2550; box-shadow: 0 6px 20px rgba(0, 0, 20, .35); }
+#confirm .no { background: none; color: #fff; border: 1px solid rgba(255, 255, 255, .45); }
+#fadeout { position: fixed; inset: 0; z-index: 7; background: #0d1230; animation: fade .7s ease both; }
+#fadeout[hidden] { display: none; }

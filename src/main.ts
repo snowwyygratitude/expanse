@@ -89,6 +89,21 @@ const hooks: Hooks = {
       setTimeout(() => (starters.querySelector('button') as HTMLElement | null)?.focus({ preventScroll: true }), reduce ? 0 : 600);
     });
   },
+  /** a plain yes-or-no before something that cannot be undone; the safe answer is the default */
+  confirm(o) {
+    return new Promise(resolve => {
+      const box = $('#confirm'), yes = $<HTMLButtonElement>('#confirm .yes'), no = $<HTMLButtonElement>('#confirm .no');
+      $('#confirm h2').textContent = o.title; $('#confirm p').textContent = o.line; yes.textContent = o.yes; no.textContent = o.no;
+      const done = (v: boolean) => { box.hidden = true; box.onkeydown = null; resolve(v); };
+      yes.onclick = () => done(true); no.onclick = () => done(false);
+      const opened = performance.now(); // the tap that opened it must not also close it
+      box.onclick = e => { if (e.target === box && performance.now() - opened > 450) done(false); };
+      box.onkeydown = e => { if (e.key === 'Escape') done(false); };
+      box.hidden = false; setTimeout(() => no.focus(), 30);
+    });
+  },
+  /** the screen goes quietly dark, then the page starts fresh */
+  restart() { $('#fadeout').hidden = false; setTimeout(() => location.reload(), 750); },
   /** one bare line to write on; resolves null if the person changes their mind */
   ask(o) {
     return new Promise(resolve => {
@@ -139,3 +154,4 @@ add('Set down a worry', () => void garden.askWorry());
 add('Let the worry go', () => garden.releaseWorry());
 add('Keep this world in a dewdrop', () => garden.bottleWorld());
 add('Toggle sound', () => garden.toggleSound());
+add('Begin the garden again', () => void garden.beginAgain());

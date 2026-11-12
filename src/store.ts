@@ -53,8 +53,11 @@ export function load(): Save {
   return fresh();
 }
 
-let timer = 0;
+let timer = 0, wiped = false;
+/** forget the whole garden on this device; nothing is written again until the page reloads */
+export function wipe() { wiped = true; clearTimeout(timer); try { localStorage.removeItem(KEY); } catch { /* ignore */ } }
 export function persist(s: Save) {
+  if (wiped) return;
   clearTimeout(timer);
   timer = window.setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* ignore */ } }, 150);
 }

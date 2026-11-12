@@ -43,7 +43,7 @@ const THEMES: Theme[] = [
     value: 'This wish says people matter to you, and that you are willing to be known. That takes more courage than it sounds.',
     already: 'You already know how to care about someone. This wish only exists because that is true.',
     step: 'Reach toward one person this week with something small and honest: a message, an invitation, a thank you.',
-    emotions: { hope: 0.9, gratitude: 0.9, joy: 0.5 }, features: [['sun', 0.6], ['warmBlooms', 1], ['butterflies', 0.9], ['lanterns', 0.6], ['puffs', 0.8], ['petals', 0.5]] },
+    emotions: { hope: 0.9, gratitude: 0.9, joy: 0.5 }, features: [['sun', 0.6], ['warmBlooms', 1], ['butterflies', 0.9], ['puffs', 0.8], ['petals', 0.5]] },
   { re: /health|healthy|strong|fit\b|fitness|run\b|running|marathon|exercise|body|sleep|heal|recover|quit|sober|eat better|energy|weight|yoga|walk/,
     name: 'The Greening', line: 'You are wishing your body well. Everything here is leaning toward the light with you.',
     value: 'This wish says you want to be here, and feel good being here. That is a deep kind of self-respect.',
@@ -85,7 +85,7 @@ const withFeeling = (line: string, feeling?: string) => {
 /** a wish's morning never has a storm, a gate or a door in it: it is a place to grow, not to leave */
 function tidy(scene: WishSpec): WishSpec {
   const e = scene.emotions; delete e.fear; delete e.sadness; e.hope = Math.max(e.hope ?? 0, 0.7);
-  const never = ['storm', 'passage', 'door', 'waterDoor', 'rain', 'mushrooms', 'path', 'floaters', 'gifts'];
+  const never = ['storm', 'passage', 'door', 'waterDoor', 'rain', 'mushrooms', 'path', 'floaters', 'gifts', 'lanterns', 'memoryLantern'];
   scene.features = (scene.features ?? []).filter(f => !never.includes(f.key));
   for (const key of never) scene.features.push({ key, amount: 0 });
   return scene;

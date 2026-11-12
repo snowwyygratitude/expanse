@@ -53,6 +53,6 @@ Answer with ONE JSON object and nothing else (no markdown fence):
   "scene": ${SCENE_SHAPE}
 }
 
-For the scene: it should feel like early morning with everything about to grow. Hope is the strongest material, joined by joy, and by calm, gratitude or curiosity where they fit. Never use fear or sadness, never use storm, rain, door, waterDoor, passage, mushrooms, path, floaters or gifts. Favour sun, rays, hopeSprouts, birds, motes, butterflies. The scene name is 2-5 words in title case.
+For the scene: it should feel like early morning with everything about to grow. Hope is the strongest material, joined by joy, and by calm, gratitude or curiosity where they fit. Never use fear or sadness, never use storm, rain, door, waterDoor, passage, mushrooms, path, floaters, gifts, lanterns or memoryLantern. Favour sun, rays, hopeSprouts, birds, motes, butterflies. The scene name is 2-5 words in title case.
 
 ${FEATURE_GUIDE}`;

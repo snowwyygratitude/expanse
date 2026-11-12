@@ -9,7 +9,7 @@
  */
 import { RGB, TAU, WHITE, approach, clamp, css, hashStr, hex, lerp, mix, outBack, rng, smooth, uid } from '../util';
 import { BASE_EMOTIONS, EMO, EMOTIONS, Emotion, FEATURES, Feature, PAL_KEYS, RECIPES, Scene, World, composeWorld, pairKey, validateSpec } from '../world/scene';
-import { Desire, Keepsake, MAX_WISHES, Save, persist } from '../store';
+import { Desire, Keepsake, MAX_WISHES, Save, persist, wipe } from '../store';
 import { Sound } from '../audio';
 import { composeWish, readyComposer } from '../ai';
 import { KEEPSAKES, drawKeepsake, drawSeed, ell, glow, shine, star4 } from './art';
@@ -25,6 +25,8 @@ export interface Hooks {
   caption(title: string, line?: string, opts?: { fresh?: boolean; hold?: number }): void;
   /** starters: [label, beginning]; a null beginning makes the chip the answer itself */
   holdStone(o: { at: () => { x: number; y: number; w: number }; note: string | Promise<string>; max: number; starters: [string, string | null][]; action: string; placeholder: string; question?: string; onHeavy?: () => void; look?: 'bloom'; skip?: string }): Promise<string | null>;
+  confirm(o: { title: string; line: string; yes: string; no: string }): Promise<boolean>;
+  restart(): void;
   ask(o: { placeholder: string; note: string | Promise<string>; action: string; max: number; question?: string; chips?: string[] }): Promise<string | null>;
 }
 
@@ -298,7 +300,7 @@ export class Garden {
     const dz = this.save.desires.find(q => q.active);
     if (dz?.active && !this.planted.length) {
       const v = validateSpec(dz.scene);
-      if (v) { v.world.key = 'desire'; v.world.whisper = dz.reflect; const f = v.world.scene.f; f.passage = 0; f.door = 0; f.waterDoor = 0; f.storm = 0; return v.world; }
+      if (v) { v.world.key = 'desire'; v.world.whisper = dz.reflect; const f = v.world.scene.f; f.passage = 0; f.door = 0; f.waterDoor = 0; f.storm = 0; f.lanterns = 0; f.memoryLantern = 0; return v.world; } // a wish's morning: no gates, no lanterns
     }
     const c = this.planted.find(p => this.custom(p.kind));
     if (c) {
@@ -512,6 +514,17 @@ export class Garden {
     const on = this.sound.toggle(); this.save.sound = on; this.save.soundOff = !on; persist(this.save);
     if (on) { this.sound.setChord(this.world.emotions.length ? EMO[this.world.emotions[0]].chord : [0, 7, 12, 16]); setTimeout(() => this.sound.bloom(), 120); }
     return on;
+  }
+  /** clear everything this device remembers and start with a fresh garden */
+  async beginAgain() {
+    if (this.wishBusy || this.worryBusy) return;
+    const ok = await this.hooks.confirm({
+      title: 'Begin your garden again?',
+      line: 'Everything here will be cleared: the feelings you planted, your worries and wish, the keepsakes and the skies you found. This cannot be undone.',
+      yes: 'Begin again', no: 'Keep my garden',
+    });
+    if (!ok) return;
+    wipe(); this.sound.chime(0, 0.16, 1); this.hooks.restart();
   }
   /** keep the current sky as a dewdrop in the garden */
   bottleWorld() {
@@ -1733,17 +1746,24 @@ export class Garden {
       drawSeed(ctx, d.kind, d.x, y, r * (d.moved ? 1.25 : 1.05), t, 1.6);
     }
     // the branch of charms
-    const charms: [string, () => void][] = [['skies', () => this.openSky()], ['keep', () => this.bottleWorld()], ['sound', () => this.toggleSound()]];
+    const charms: [string, () => void][] = [['skies', () => this.openSky()], ['keep', () => this.bottleWorld()], ['sound', () => this.toggleSound()], ['begin again', () => void this.beginAgain()]];
     const bx = W - 8, by = 18, wood = mix([70, 50, 44], P.skyTop, 0.35);
-    ctx.strokeStyle = css(wood); ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx + 20, by - 12); ctx.quadraticCurveTo(bx - 80, by + 2, bx - 172, by + 16); ctx.stroke();
+    ctx.strokeStyle = css(wood); ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx + 20, by - 12); ctx.quadraticCurveTo(bx - 100, by + 2, bx - 222, by + 20); ctx.stroke();
     ctx.fillStyle = css(mix(P.foliage, DARK, 0.25));
-    for (let i = 0; i < 6; i++) { const lx = bx - 20 - i * 29, ly = by + 2 + i * 2.4; ell(ctx, lx, ly - 7, 9, 4, -0.5 + Math.sin(t + i) * 0.1); ctx.fill(); ell(ctx, lx - 12, ly + 6, 8, 3.6, 0.5 + Math.sin(t * 1.2 + i) * 0.1); ctx.fill(); }
+    for (let i = 0; i < 7; i++) { const lx = bx - 20 - i * 29, ly = by + 2 + i * 2.4; ell(ctx, lx, ly - 7, 9, 4, -0.5 + Math.sin(t + i) * 0.1); ctx.fill(); ell(ctx, lx - 12, ly + 6, 8, 3.6, 0.5 + Math.sin(t * 1.2 + i) * 0.1); ctx.fill(); }
     charms.forEach(([label, fn], i) => {
-      const hx = bx - 34 - i * 50, hy0 = by + 6 + i * 4, len = [34, 46, 36][i], a = Math.sin(t * 1.1 + i * 2) * 0.09 * (label === 'sound' && this.sound.audible ? 2.2 : 1);
+      const hx = bx - 34 - i * 50 - (i === 3 ? 16 : 0), hy0 = by + 6 + i * 4, len = [34, 46, 36, 30][i], a = Math.sin(t * 1.1 + i * 2) * 0.09 * (label === 'sound' && this.sound.audible ? 2.2 : 1);
       const cx = hx + Math.sin(a) * len, cy = hy0 + Math.cos(a) * len;
       ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx, hy0); ctx.lineTo(cx, cy - 8); ctx.stroke();
       if (label === 'skies') { shine(ctx, cx, cy + 2, 26, [255, 235, 160], 0.6 + 0.2 * Math.sin(t * 2)); ctx.fillStyle = '#fff1b8'; star4(ctx, cx, cy + 2, 10, a * 2, 0.36); ctx.fill(); }
       if (label === 'keep') drawKeepsake(ctx, 'worlddrop', cx, cy + 16, 0.62, t, { sky: [P.skyTop, P.skyMid, P.skyLow].map(c => css(c)) });
+      if (label === 'begin again') { // a single seed, the way every garden starts
+        shine(ctx, cx, cy + 4, 20, [200, 240, 190], 0.45);
+        ctx.fillStyle = '#c9a77a'; ell(ctx, cx, cy + 6, 6.5, 8.5, a); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.45)'; ell(ctx, cx - 2, cy + 3, 1.6, 3, a + 0.3); ctx.fill();
+        ctx.strokeStyle = '#8fd39a'; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx, cy - 2); ctx.quadraticCurveTo(cx + 1, cy - 8, cx + 5, cy - 10); ctx.stroke();
+        ctx.fillStyle = '#8fd39a'; ell(ctx, cx + 6, cy - 10, 3.2, 1.6, -0.4); ctx.fill();
+      }
       if (label === 'sound') {
         const on = this.sound.audible; if (on) shine(ctx, cx, cy + 6, 26, [170, 240, 230], 0.6);
         ctx.fillStyle = css(mix([150, 130, 110], P.skyTop, 0.2)); ctx.fillRect(cx - 9, cy - 9, 18, 3);
