@@ -180,7 +180,8 @@ Worries
   quite" asks for a different view of the same bud, from Claude when
   reachable (`RETHINK_SYSTEM`, `/api/rethink`) or from the garden's own
   words, never repeating one already shown. Touch an open bud to read it again.
-- **Choose new words.** When all three are open, touch the stone's light. It
+- **Choose new words.** When all three are open, the stone's light pulses with
+  rings and says "touch the light"; touch it. It
   names the belief that may be underneath and offers three kinder ones, or you
   write your own. The one you choose grows into a Belief Bloom that stays in
   the garden; touch it any day to read it again.

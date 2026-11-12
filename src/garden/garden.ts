@@ -911,8 +911,19 @@ export class Garden {
       shine(ctx, p.x, sy0, (46 + 16 * pu) * d, warm, 0.9);
       ctx.fillStyle = '#fffdf0'; star4(ctx, p.x, sy0, (7 + 3 * pu) * d, t * 0.5, 0.3); ctx.fill();
       ctx.strokeStyle = css(warm, 0.4 + 0.4 * pu); ctx.lineWidth = 1.5; ell(ctx, p.x, sy0, (28 + 6 * pu) * d, (19 + 4 * pu) * d); ctx.stroke();
-      this.lateHit(p.x, sy0, 28, () => this.openChoice());
-    }
+      // rings keep travelling outward from the light, like something calling softly
+      if (!this.rm) for (let k = 0; k < 3; k++) { const q = ((t * 0.55 + k / 3) % 1); ctx.strokeStyle = css(warm, 0.75 * (1 - q)); ctx.lineWidth = 2 * (1 - q) + 0.6; ell(ctx, p.x, sy0, (24 + 52 * q) * d, (15 + 33 * q) * d); ctx.stroke(); }
+      // and it says so, in words
+      const ly = p.y - 96 * d, a = 0.95 * (0.85 + 0.15 * pu); // above the buds, clear of the grass and the seed tray
+      ctx.save(); ctx.translate(p.x, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, 92, [10, 14, 40], 0.55); ctx.restore();
+      text(ctx, 'touch the light', p.x, ly, 14 / this.s, a, { italic: true });
+      this.lateHit(p.x, sy0, 40, () => this.openChoice()); this.lateHit(p.x, ly, 34, () => this.openChoice());
+    } else if (!this.worryBusy) // anywhere else on the stone: it says what comes next (and wins over a creature wandering past)
+      this.lateHit(p.x, sy0, 26 * d, () => {
+        this.sound.chime(1);
+        if (!explored) void this.exploreWorry();
+        else this.hooks.caption('', `Touch ${n ? 'another' : 'one'} of the glowing buds around the stone.`, { hold: 5 });
+      });
     if (!explored && this.t > this.quietUntil && !this.worryBusy) { // an optional next step, offered quietly
       const a = clamp((this.t - this.quietUntil) / 2) * 0.7, ly = sy0 - 40 * d;
       ctx.save(); ctx.translate(p.x, ly); ctx.scale(1, 0.34); glow(ctx, 0, 0, 96, [10, 14, 40], 0.5 * a / 0.7); ctx.restore();
