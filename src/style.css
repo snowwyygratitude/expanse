@@ -162,3 +162,21 @@ body:has(#stone:not([hidden])) #caption { opacity: 0; transition-duration: .25s;
 #days .row em { opacity: .85; }
 #days .none { text-align: center; opacity: .75; font-style: italic; padding: 30px 0; }
 #mark { pointer-events: auto; }
+
+/* ---- the "i" in the corner, and what it opens ---- */
+#mark { left: 60px; }
+#info { position: fixed; top: max(9px, env(safe-area-inset-top)); left: 8px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: none; color: #fff; opacity: .82; cursor: pointer; z-index: 3; filter: drop-shadow(0 1px 6px rgba(8, 10, 40, .5)); }
+#info:hover, #info:focus-visible { opacity: 1; background: rgba(255, 255, 255, .12); outline: none; }
+#about { position: fixed; inset: 0; z-index: 6; overflow-y: auto; -webkit-overflow-scrolling: touch; background: radial-gradient(ellipse at 50% 20%, rgba(70, 48, 140, .9), rgba(16, 12, 44, .96) 70%); animation: fade .4s ease; }
+#about[hidden] { display: none; }
+#about .x { position: fixed; top: max(14px, env(safe-area-inset-top)); right: 14px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); background: rgba(30, 20, 70, .6); color: #fff; font-size: 17px; cursor: pointer; z-index: 1; }
+#about .sheet { max-width: 520px; margin: 0 auto; padding: 66px 26px 56px; }
+#about .kicker { margin: 0; text-align: center; font-size: 11.5px; letter-spacing: .3em; text-transform: uppercase; opacity: .7; }
+#about h2 { margin: 10px 0 30px; text-align: center; font: italic 400 clamp(24px, 6.4vw, 30px)/1.25 var(--serif); text-wrap: balance; }
+#about section { margin: 0 0 22px; }
+#about h3 { margin: 0 0 6px; font: italic 400 19px var(--serif); }
+#about p, #about li { margin: 0; font-size: 16px; line-height: 1.55; opacity: .9; }
+#about ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
+#about .quiet, #about .care { padding: 16px 18px; border-radius: 16px; background: rgba(255, 255, 255, .07); }
+#about .care { background: rgba(255, 220, 200, .09); }
+#about .back { display: block; margin: 30px auto 0; font: 17px var(--serif); color: #2a2550; background: #f4f0ff; border: 0; border-radius: 999px; padding: 13px 28px; cursor: pointer; }

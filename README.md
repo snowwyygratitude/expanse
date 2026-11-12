@@ -146,6 +146,12 @@ Wishes
   `shared/prompts.mjs`, `/api/desire` on the server), otherwise from the themes
   in `src/desire.ts`. A wish's scene never has a storm, rain, a door, a gate or lanterns.
 
+About
+- The "i" in the top-left corner opens a page about the garden: what each
+  part is for, what happens to your words (on this device; sent to Claude
+  only when signed in to Claude), and that it is a space for reflection, not
+  therapy, with crisis lines. Edit the text in `index.html` (`#about`).
+
 Coming back
 - **The garden remembers on this device.** Your worry, your wish tree and its
   leaves are still there tomorrow (browser storage; no account, no sync).

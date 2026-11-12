@@ -208,3 +208,12 @@ add('Begin the garden again', () => void garden.beginAgain());
 
 // testing: three quick taps on the wordmark and the garden behaves as if a night has passed
 { let taps: number[] = []; $('#mark').addEventListener('click', () => { const now = Date.now(); taps = [...taps.filter(t => now - t < 1200), now]; if (taps.length >= 3) { taps = []; garden.tomorrow(); } }); }
+
+// the "i" in the corner: what this garden is, and what happens to your words
+{
+  const about = $('#about'), info = $<HTMLButtonElement>('#info');
+  const close = () => { about.hidden = true; info.focus(); };
+  info.onclick = () => { about.hidden = false; about.scrollTop = 0; setTimeout(() => $<HTMLButtonElement>('#about .x').focus(), 30); };
+  $('#about .x').onclick = close; $('#about .back').onclick = close;
+  about.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+}

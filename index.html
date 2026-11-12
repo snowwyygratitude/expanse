@@ -9,6 +9,26 @@
 <body>
   <canvas id="garden" aria-label="Your garden. Drag an emotion seed from the ledge at the bottom into the ground and the world transforms."></canvas>
   <div id="mark" aria-hidden="true"></div>
+  <button type="button" id="info" aria-label="About this garden" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="10.2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="7.4" r="1.25" fill="currentColor"/><path d="M12 10.6v6.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+  <div id="about" role="dialog" aria-labelledby="about-t" hidden>
+    <button type="button" class="x" aria-label="Close">✕</button>
+    <div class="sheet">
+      <p class="kicker">About this garden</p>
+      <h2 id="about-t">A small, quiet place for your inner weather</h2>
+      <section><h3>Plant how you feel</h3><p>Drag a feeling into the garden, or two together, and the world changes with it: sun for joy, still water for calm, soft rain for sadness. Every feeling is welcome here. None of them is a problem to fix.</p></section>
+      <section><h3>Set down a worry</h3><p>Write it on the stone and let it rest. The garden offers a few gentler ways of seeing it, and you can keep the ones that help. When you are ready, let it go.</p></section>
+      <section><h3>Whisper a wish</h3><p>Say what you are hoping for, and a young tree grows from it. Tell the tree each small step you take, and watch it fill out.</p></section>
+      <section><h3>Come back tomorrow</h3><p>The garden remembers what you left, asks how it is going, and keeps a gentle record of your days.</p></section>
+      <section class="quiet"><h3>Your words</h3><ul>
+        <li>Your garden lives only on this device, in this browser. There is no account, and no one else can see it.</li>
+        <li>When you are signed in to Claude, what you write is sent to Claude so the garden can reply with words that fit you. Otherwise the garden uses its own words, and nothing leaves your device.</li>
+        <li>Your journal keeps only the first few words of each worry, never the whole thing.</li>
+        <li>Clearing your browser data or using another device starts a fresh garden. “Begin again” clears everything on purpose.</li>
+      </ul></section>
+      <section class="care"><h3>Please know</h3><p>This garden is a space for reflection. It is not therapy and cannot replace care from a person. If you are in danger or thinking about harming yourself, please reach out now: in the US or Canada, call or text <b>988</b>. Elsewhere, <b>findahelpline.com</b> lists free, confidential lines near you.</p></section>
+      <button type="button" class="back">Return to the garden</button>
+    </div>
+  </div>
   <div id="caption" aria-live="polite"><div class="fresh">a new sky found</div><h1></h1><p></p><div class="reply" hidden><button type="button" class="yes"></button><button type="button" class="no"></button><span class="said"></span></div><div class="choices" hidden></div></div>
   <form id="whisper" autocomplete="off" hidden>
     <p class="q" hidden></p>
