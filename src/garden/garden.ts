@@ -9,7 +9,7 @@
  */
 import { RGB, TAU, WHITE, approach, clamp, css, hashStr, hex, lerp, mix, outBack, rng, smooth, uid } from '../util';
 import { BASE_EMOTIONS, EMO, EMOTIONS, Emotion, FEATURES, Feature, PAL_KEYS, RECIPES, Scene, World, composeWorld, pairKey, validateSpec } from '../world/scene';
-import { Desire, Keepsake, MAX_WISHES, Save, persist, wipe } from '../store';
+import { CairnStone, Day, Desire, Keepsake, MAX_WISHES, Save, fewWords, persist, wipe } from '../store';
 import { Sound } from '../audio';
 import { composeWish, readyComposer } from '../ai';
 import { KEEPSAKES, drawKeepsake, drawSeed, ell, glow, shine, star4 } from './art';
@@ -22,7 +22,8 @@ type Ctx = CanvasRenderingContext2D;
 type SeedKind = Emotion | 'wish' | 'worry';
 
 export interface Hooks {
-  caption(title: string, line?: string, opts?: { fresh?: boolean; hold?: number; reply?: { yes: string; no: string; said?: string; onYes: () => void; onNo: () => void } }): void;
+  caption(title: string, line?: string, opts?: { fresh?: boolean; hold?: number; reply?: { yes: string; no: string; said?: string; onYes: () => void; onNo: () => void }; choices?: { label: string; fn: () => void }[] }): void;
+  showDays(o: { summary: string; days: { label: string; feelings: { name: string; color: string }[]; rows: [string, string][] }[] }): void;
   /** starters: [label, beginning]; a null beginning makes the chip the answer itself */
   holdStone(o: { at: () => { x: number; y: number; w: number }; note: string | Promise<string>; max: number; starters: [string, string | null][]; action: string; placeholder: string; question?: string; onHeavy?: () => void; look?: 'bloom'; skip?: string }): Promise<string | null>;
   confirm(o: { title: string; line: string; yes: string; no: string }): Promise<boolean>;
@@ -58,7 +59,7 @@ export class Garden {
   private flash = 0; private flashC: RGB = WHITE;
   private worldT0 = 0; private giftTaken = false; private rainCount = 0; private memReleased = false;
   private glimmer = { x: 0, y: 0, found: false }; private foundGlimmers = new Set<string>();
-  private wishBusy = false; private treeUp = false; private treeFx = new WeakMap<Desire, { t0: number; blossomT: number[]; leafT: number; pts: number[][] }>(); private stormFlash = 0; private nextStorm = 3;
+  private wishBusy = false; private treeUp = false; private cairnPt = [0, 0]; private cairnT = -9; private cairnI = -1; private treeFx = new WeakMap<Desire, { t0: number; blossomT: number[]; leafT: number; pts: number[][] }>(); private stormFlash = 0; private nextStorm = 3;
 
   private flowers: Flower[] = []; private rainBlooms: Flower[] = [];
   private mushrooms: { x: number; y: number; c: RGB; g: number; pop: number; size: number }[] = [];
@@ -341,6 +342,7 @@ export class Garden {
     this.rainBlooms.forEach(b => (b.th = 9)); // marked to fade
     this.save.planted = this.planted.map(p => ({ emo: p.kind, x: p.x, y: p.y, words: p.words, ax: p.ax, ay: p.ay }));
     const w = this.world;
+    if (announce && !w.custom) { const td = this.today(); for (const e of w.emotions) if (!td.feelings.includes(e)) td.feelings.push(e); }
     this.sound.setChord(w.emotions.length ? EMO[w.emotions[0]].chord : [0, 7, 12, 16]);
     if (w.emotions.length && announce) {
       if (!w.custom && !this.save.discovered[w.key]) this.save.discovered[w.key] = Date.now();
@@ -379,6 +381,107 @@ export class Garden {
   }
   /** invitations (the stone's and flower's words, the guide) wait while a feeling is being answered */
   private invite() { return this.t < this.quietUntil ? 0 : clamp((this.t - this.quietUntil) / 1.5); }
+  /* ---------------- days: the garden remembers each visit ---------------- */
+  private now() { return Date.now() + (this.save.dayShift || 0) * 864e5; }
+  private dayKey(ms = this.now()) { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+  private today(): Day { return (this.save.days[this.dayKey()] ??= { feelings: [], steps: [] }); }
+  private dayLabel(key: string) {
+    const [y, m, d] = key.split('-').map(Number), then = new Date(y, m - 1, d), n = new Date(this.now()), t0 = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    const gap = Math.round((t0.getTime() - then.getTime()) / 864e5);
+    return gap === 0 ? 'today' : gap === 1 ? 'yesterday' : then.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+  /** on a new day the garden greets you with what it has been keeping, and asks after it */
+  welcome() {
+    const key = this.dayKey(), last = this.save.lastDay;
+    this.save.lastDay = key; this.save.lastVisit = new Date().toDateString(); persist(this.save);
+    const w = this.save.worry, d = this.save.desires[0];
+    if (!last || last === key || this.planted.some(p => !this.custom(p.kind))) { this.idleCaption(); return; }
+    this.sound.chime(2, 0.14, 2);
+    if (d) this.rings.push({ x: d.x, y: d.y, t0: this.t + 0.6, dur: 1.6, max: 150, c: [255, 232, 190], flat: 0.32 });
+    const knot = this.planted.find(p => p.kind === 'worry'), wx = knot ?? { x: STONE.x, y: STONE.y };
+    if (w) this.rings.push({ x: wx.x, y: wx.y, t0: this.t + 0.2, dur: 1.6, max: 150, c: [200, 190, 255], flat: 0.32 });
+    if (w && w.stage !== 'done') this.askAfterWorry();
+    else if (d) this.askAfterWish('Welcome back');
+    else this.hooks.caption('Welcome back', 'The garden kept everything as you left it. What is happening in your world today?', { hold: 12 });
+  }
+  private askAfterWorry() {
+    const w = this.save.worry; if (!w) return;
+    const then = () => { if (this.save.desires[0]) setTimeout(() => this.askAfterWish(''), 4200); };
+    const say = (felt: string, line: string, choices?: { label: string; fn: () => void }[]) => { this.today().felt = felt; persist(this.save); this.sound.chime(1, 0.12, 2); this.hooks.caption('', line, { hold: choices ? 40 : 7, choices }); };
+    this.hooks.caption('Welcome back', `The worry you set down, “${fewWords(w.worry)}”, is resting here. How does it feel today?`, { hold: 90, choices: [
+      { label: 'lighter', fn: () => say('lighter', 'That is good to hear. You can let it go whenever you are ready.', [
+        { label: 'let it go now', fn: () => { this.releaseWorry(); then(); } },
+        { label: 'keep it a while', fn: () => { this.hooks.caption('', 'It can rest here as long as you like.', { hold: 5 }); then(); } }]) },
+      { label: 'about the same', fn: () => { say('about the same', 'That is all right. It can rest here as long as it needs to.'); then(); } },
+      { label: 'heavier', fn: () => {
+        const planted = w.stage === 'planted';
+        say('heavier', planted ? 'Thank you for saying so. Some days it weighs more. Would it help to look at it again?' : 'Thank you for saying so. Some days it weighs more. Carry the stone into the garden when you want to look at it together.',
+          planted ? [{ label: 'look at it again', fn: () => { this.hooks.caption('', ''); void this.exploreWorry(); } }, { label: 'not now', fn: () => { this.hooks.caption('', 'It will keep. Nothing is being asked of you.', { hold: 5 }); then(); } }] : undefined);
+        if (!planted) then();
+      } },
+    ] });
+  }
+  private askAfterWish(title: string) {
+    const d = this.save.desires[0]; if (!d) return;
+    this.hooks.caption(title, `Your wish, “${fewWords(d.wish, 7)}”, is still growing. Did you take a step toward it?`, { hold: 60, choices: [
+      { label: 'yes, tell the tree', fn: () => { this.hooks.caption('', ''); void this.askStep(d); } },
+      { label: 'not today', fn: () => { this.sound.chime(1, 0.12, 2); this.hooks.caption('', 'That is all right. Coming back to it counts too.', { hold: 6 }); } },
+    ] });
+  }
+  /** testing: the garden behaves as if a night has passed */
+  tomorrow() {
+    this.save.dayShift = (this.save.dayShift || 0) + 1; persist(this.save);
+    this.planted.filter(p => !this.custom(p.kind)).forEach(p => this.goHome(p)); this.planted = this.planted.filter(p => this.custom(p.kind)); this.setWorld({ x: CX, y: 700 }, false);
+    this.flash = 0.6; this.flashC = [255, 236, 200];
+    this.welcome();
+  }
+  /** the journal */
+  openDays() {
+    const keys = Object.keys(this.save.days).sort().reverse();
+    const days = keys.map(k => {
+      const d = this.save.days[k], rows: [string, string][] = [];
+      if (d.worry) rows.push(['set down', `“${d.worry}”` + (d.kept ? `, and chose: “${d.kept}”` : '')]);
+      else if (d.kept) rows.push(['chose new words', `“${d.kept}”`]);
+      if (d.felt) rows.push(['the worry felt', d.felt]);
+      if (d.wish) rows.push(['wished', `“${d.wish}”`]);
+      if (d.steps.length) rows.push([d.steps.length > 1 ? 'steps toward the wish' : 'a step toward the wish', d.steps.map(x => `“${x}”`).join(', ')]);
+      const feelings = d.feelings.filter(e => (EMOTIONS as readonly string[]).includes(e)).map(e => ({ name: EMO[e as Emotion].name, color: css(EMO[e as Emotion].color) }));
+      return { label: this.dayLabel(k), feelings, rows };
+    }).filter(d => d.feelings.length || d.rows.length);
+    const n = days.length, c = this.save.cairn.length;
+    this.sound.chime(3); this.hooks.caption('', '');
+    this.hooks.showDays({ summary: n ? `${n} ${n === 1 ? 'day' : 'days'} in the garden` + (c ? ` · ${c} ${c === 1 ? 'worry' : 'worries'} set down for good` : '') : '', days });
+  }
+  /** a finished or released worry becomes a small stone beside the resting stone: a few words and a day */
+  private toCairn(kept?: string) {
+    const w = this.save.worry as (Save['worry'] & { cairned?: boolean }) | null; if (!w || w.cairned) return;
+    w.cairned = true; this.save.cairn.push({ id: uid(), words: fewWords(w.worry), day: this.dayKey(), kept });
+    this.cairnT = this.t;
+  }
+  private tapCairn() {
+    const c = this.save.cairn; if (!c.length) return;
+    this.cairnI = (this.cairnI + 1) % c.length; const st = c[c.length - 1 - this.cairnI];
+    this.sound.chime(this.cairnI % 5, 0.12, 1);
+    this.hooks.caption(`“${st.words}”`, `Laid to rest ${this.dayLabel(st.day)}.` + (st.kept ? ` You chose: “${st.kept}”` : '') + (c.length > 1 ? ` (${this.cairnI + 1} of ${c.length}, touch again for the next)` : ''), { hold: 12, choices: [
+      { label: 'remove this stone', fn: () => { this.save.cairn = this.save.cairn.filter(q => q !== st); this.cairnI = -1; persist(this.save); this.sound.pop(); this.hooks.caption('', 'The stone is gone from the cairn.', { hold: 4 }); } },
+    ] });
+  }
+  private paintCairn() {
+    const { ctx, t } = this, n = this.save.cairn.length; if (!n) return;
+    const P = this.cur.pal, bx = STONE.x + STONE.rx + 38, by = STONE.y + 8, show = Math.min(n, 6), pop = outBack(clamp((t - this.cairnT) / 0.7));
+    ctx.fillStyle = 'rgba(8,14,36,.32)'; ell(ctx, bx + 3, by + 4, 28, 8); ctx.fill();
+    let y = by;
+    for (let i = 0; i < show; i++) {
+      const k = (i === show - 1 ? pop : 1), rx = (23 - i * 2.6) * k, ry = (9.5 - i * 0.7) * k, ox = Math.sin(i * 2.4) * 3;
+      y -= ry * (i ? 1.55 : 0.6);
+      const g = ctx.createLinearGradient(0, y - ry, 0, y + ry); g.addColorStop(0, css(mix([196, 190, 226], P.light, 0.25))); g.addColorStop(1, css(mix([96, 90, 140], P.skyTop, 0.25)));
+      ctx.fillStyle = g; ell(ctx, bx + ox, y, rx, ry); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.3)'; ell(ctx, bx + ox - rx * 0.3, y - ry * 0.35, rx * 0.35, ry * 0.25); ctx.fill();
+    }
+    if (n > show) for (let i = 0; i < Math.min(n - show, 5); i++) { ctx.fillStyle = css(mix([150, 144, 190], P.skyTop, 0.25)); ell(ctx, bx + 30 + i * 8 - (i % 2) * 52, by + 4 + (i % 3), 6, 3.2); ctx.fill(); }
+    shine(ctx, bx, y - 4, 30 + 5 * Math.sin(t * 1.5), [215, 205, 255], 0.4);
+    this.lateHit(bx, (by + y) / 2, Math.max(24, (by - y) / 2 + 10), () => this.tapCairn()); this.cairnPt = [this.sx(bx), this.sy((by + y) / 2)];
+  }
   idleCaption() {
     const sub = this.gest?.spec.sub ?? this.world.whisper;
     const today = new Date().toDateString();
@@ -584,7 +687,7 @@ export class Garden {
     this.fly('wish', this.sx(WISH.x + 26), this.sy(WISH.y - 112), tx, ty, true, () => {
       this.save.desires.forEach(q => (q.active = false));
       const nd: Desire = { ...out, id: uid(), x: tx, y: ty, born: Date.now(), opened: [false, false, false], steps: [], active: true };
-      this.save.desires.push(nd); this.fxOf(nd).t0 = this.t;
+      this.save.desires.push(nd); this.fxOf(nd).t0 = this.t; this.today().wish = fewWords(out.wish, 7);
       this.flash = 1; this.flashC = [255, 236, 200]; this.sound.plant(); this.sound.cue('sprout');
       this.burst(tx, ty, [255, 236, 200], this.rm ? 8 : 30, 170); this.burst(tx, ty, WHITE, this.rm ? 3 : 12, 120, 1);
       this.rings.push({ x: tx, y: ty, t0: this.t, dur: 1.2, max: 170, c: [255, 232, 190], flat: 0.32 });
@@ -635,7 +738,7 @@ export class Garden {
     });
     this.treeUp = false;
     if (!said || !said.trim() || !this.save.desires.includes(d)) return;
-    d.steps.push({ text: said.trim(), date: Date.now() }); this.fxOf(d).leafT = this.t; persist(this.save);
+    d.steps.push({ text: said.trim(), date: this.now() }); this.today().steps.push(fewWords(said, 8)); this.fxOf(d).leafT = this.t; persist(this.save);
     this.wakeDesire(d);
     this.burst(d.x, d.y - 80 * k, [190, 245, 190], 20, 90, 1); this.sound.cue('sprout'); this.sound.chime(4, 0.16, 2);
     this.rings.push({ x: d.x, y: d.y, t0: this.t, dur: 1, max: 110, c: [200, 245, 200], flat: 0.32 });
@@ -645,7 +748,7 @@ export class Garden {
   private paintWishTree(dz: Desire) {
     const { ctx, t } = this, fx = this.fxOf(dz);
     const P = this.cur.pal, x = dz.x, y = dz.y, d = 0.95 + (y - 600) / 300 * 0.3;
-    const days = (Date.now() - dz.born) / 864e5, n = dz.steps.length, stage = clamp(n * 0.09 + days * 0.04);
+    const days = (this.now() - dz.born) / 864e5, n = dz.steps.length, stage = clamp(n * 0.09 + days * 0.04);
     const g = this.rm ? 1 : outBack((t - fx.t0) / 1.6), S = d * 1.65 * (0.8 + 0.4 * stage) * g, H = 56 * S, sway = Math.sin(t * 0.9 + x) * 2.2 * S;
     const cx = x + sway, cy = y - H - 16 * S, warm: RGB = [255, 232, 196], breath = 0.5 + 0.5 * Math.sin(t * 1.4);
     this.grab(dz, x, y - H * 0.55, 34 * S, 'wishtree'); this.grab(dz, cx, cy, 40 * S, 'wishtree');
@@ -724,6 +827,7 @@ export class Garden {
     if (out === 'crisis') { this.hooks.caption(CRISIS_TITLE, CRISIS_LINE, { hold: 120 }); return; }
     const i = this.planted.findIndex(p => p.kind === 'worry');
     if (i >= 0) { if (this.save.worry) this.save.worry.stage = 'done'; this.unplant(i); }
+    this.today().worry = fewWords(out.worry);
     this.save.worry = { ...out, stage: 'held', opened: [false, false, false], explored: false }; persist(this.save);
     this.burst(STONE.x, STONE.y - 14, [180, 170, 240], 22, 90, 1); this.sound.chime(0, 0.16, 1);
     this.hooks.caption('It has a shape now', 'You do not have to keep holding it. Carry the stone into the garden and set it down.', { hold: 14 });
@@ -780,7 +884,7 @@ export class Garden {
   }
   private finishWorry(reframe: string) {
     const w = this.save.worry, p = this.planted.find(q => q.kind === 'worry'); if (!w || !p) return;
-    w.stage = 'done';
+    w.stage = 'done'; this.today().kept = reframe; this.toCairn(reframe);
     this.flash = 1; this.flashC = [255, 236, 190];
     this.wave = { x: p.x, y: p.y, t0: this.t };
     const k = this.grant('beliefbloom', p.x + 56, p.y + 14);
@@ -799,7 +903,7 @@ export class Garden {
   releaseWorry() {
     const w = this.save.worry; if (!w || this.worryBusy) return;
     const i = this.planted.findIndex(p => p.kind === 'worry'); if (i >= 0) this.planted.splice(i, 1);
-    this.save.worry = null; this.budT = [-9, -9, -9];
+    this.toCairn(); this.save.worry = null; this.budT = [-9, -9, -9];
     const top = STONE.y - 15;
     this.burst(STONE.x, top, [200, 190, 245], 18, 70, 1);
     for (let k = 0; k < 3; k++) this.rings.push({ x: STONE.x, y: top, t0: this.t + k * 0.25, dur: 1.4, max: 90 + k * 30, c: [210, 200, 255], flat: 0.32 });
@@ -1484,6 +1588,7 @@ export class Garden {
     list.push([TREE.y, () => this.paintTree()]);
     if (f.door > 0.03) list.push([DOOR.y, () => this.paintDoor()]);
     list.push([WISH.y, () => this.paintWishFlower()]);
+    list.push([STONE.y + 7, () => this.paintCairn()]);
     for (const dz of this.save.desires) list.push([dz.y, () => this.paintWishTree(dz)]);
     list.push([STONE.y, () => this.paintWorryStone()]);
     if (f.garlands > 0.05) for (const [px, py, ph] of [[330, 668, 110], [990, 668, 112], [1430, 652, 108]]) list.push([py, () => { ctx.strokeStyle = css(mix([120, 90, 70], DARK, 0.2)); ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - ph * outBack(f.garlands)); ctx.stroke(); }]);
@@ -1797,13 +1902,13 @@ export class Garden {
       drawSeed(ctx, d.kind, d.x, y, r * (d.moved ? 1.25 : 1.05), t, 1.6);
     }
     // the branch of charms
-    const charms: [string, () => void][] = [['skies', () => this.openSky()], ['sound', () => this.toggleSound()], ['begin again', () => void this.beginAgain()]];
+    const charms: [string, () => void][] = [['skies', () => this.openSky()], ['days', () => this.openDays()], ['sound', () => this.toggleSound()], ['begin again', () => void this.beginAgain()]];
     const bx = W - 8, by = 18, wood = mix([70, 50, 44], P.skyTop, 0.35);
-    ctx.strokeStyle = css(wood); ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx + 20, by - 12); ctx.quadraticCurveTo(bx - 90, by + 2, bx - 196, by + 18); ctx.stroke();
+    ctx.strokeStyle = css(wood); ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(bx + 20, by - 12); ctx.quadraticCurveTo(bx - 100, by + 2, bx - 226, by + 20); ctx.stroke();
     ctx.fillStyle = css(mix(P.foliage, DARK, 0.25));
-    for (let i = 0; i < 6; i++) { const lx = bx - 20 - i * 29, ly = by + 2 + i * 2.4; ell(ctx, lx, ly - 7, 9, 4, -0.5 + Math.sin(t + i) * 0.1); ctx.fill(); ell(ctx, lx - 12, ly + 6, 8, 3.6, 0.5 + Math.sin(t * 1.2 + i) * 0.1); ctx.fill(); }
+    for (let i = 0; i < 7; i++) { const lx = bx - 20 - i * 29, ly = by + 2 + i * 2.4; ell(ctx, lx, ly - 7, 9, 4, -0.5 + Math.sin(t + i) * 0.1); ctx.fill(); ell(ctx, lx - 12, ly + 6, 8, 3.6, 0.5 + Math.sin(t * 1.2 + i) * 0.1); ctx.fill(); }
     charms.forEach(([label, fn], i) => {
-      const hx = bx - 34 - i * 52 - (i === 2 ? 14 : 0), hy0 = by + 6 + i * 3, len = [34, 40, 30][i], a = Math.sin(t * 1.1 + i * 2) * 0.09 * (label === 'sound' && this.sound.audible ? 2.2 : 1);
+      const hx = bx - 30 - i * 48 - (i === 3 ? 12 : 0), hy0 = by + 6 + i * 3, len = [34, 42, 36, 28][i], a = Math.sin(t * 1.1 + i * 2) * 0.09 * (label === 'sound' && this.sound.audible ? 2.2 : 1);
       const cx = hx + Math.sin(a) * len, cy = hy0 + Math.cos(a) * len;
       ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx, hy0); ctx.lineTo(cx, cy - 8); ctx.stroke();
       if (label === 'skies') { shine(ctx, cx, cy + 2, 26, [255, 235, 160], 0.6 + 0.2 * Math.sin(t * 2)); ctx.fillStyle = '#fff1b8'; star4(ctx, cx, cy + 2, 10, a * 2, 0.36); ctx.fill(); }
@@ -1818,6 +1923,11 @@ export class Garden {
         ctx.fillStyle = 'rgba(255,255,255,.95)'; for (let k = 0; k < 22; k++) { const an = k * 2.39996 + sw, rr = 8.5 + (k % 3); ell(ctx, px + Math.cos(an) * rr, py + Math.sin(an) * rr, 0.9, 0.9); ctx.fill(); }
         ctx.fillStyle = '#e9e2c8'; ell(ctx, px, py, 2.2, 2.2); ctx.fill();
         if (!this.rm) for (let k = 0; k < 2; k++) { const q = (t * 0.22 + k * 0.5) % 1; ctx.fillStyle = `rgba(255,255,255,${0.7 * Math.sin(q * Math.PI)})`; ell(ctx, px + q * 46 + Math.sin(q * 9 + k) * 4, py - q * 22 + Math.cos(q * 7) * 3, 1.1, 1.1); ctx.fill(); } // a seed or two always drifting off
+      }
+      if (label === 'days') { // a small string of days, each its own colour
+        const cols: RGB[] = [[255, 214, 120], [150, 200, 255], [255, 170, 190], [170, 235, 180]];
+        shine(ctx, cx, cy + 6, 22, [235, 225, 255], 0.4);
+        cols.forEach((c, k) => { const yy = cy - 3 + k * 6.2, xx = cx + Math.sin(a * 3 + k) * 1.2; ctx.fillStyle = css(c); ell(ctx, xx, yy, 3.4, 2.6); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.55)'; ell(ctx, xx - 1, yy - 0.8, 1, 0.7); ctx.fill(); });
       }
       if (label === 'sound') {
         const on = this.sound.audible; if (on) shine(ctx, cx, cy + 6, 26, [170, 240, 230], 0.6);

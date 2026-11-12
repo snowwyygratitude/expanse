@@ -33,6 +33,8 @@ const hooks: Hooks = {
       const r = opts.reply; rp.hidden = !r; said.textContent = r?.said ?? '';
       ry.hidden = rn.hidden = !r || !!r.said;
       if (r && !r.said) { ry.textContent = r.yes; rn.textContent = r.no; ry.onclick = () => r.onYes(); rn.onclick = () => r.onNo(); }
+      const ch = $('#caption .choices'); ch.replaceChildren(); ch.hidden = !opts.choices?.length;
+      for (const c of opts.choices ?? []) { const b = document.createElement('button'); b.type = 'button'; b.textContent = c.label; b.onclick = () => c.fn(); ch.append(b); }
       capTitle.style.display = title ? '' : 'none';
       caption.classList.toggle('is-fresh', !!opts.fresh);
       if (title || line) caption.classList.add('show');
@@ -99,6 +101,21 @@ const hooks: Hooks = {
       box.onkeydown = e => { if (e.key === 'Escape') void finish(null); };
       setTimeout(() => (starters.querySelector('button') as HTMLElement | null)?.focus({ preventScroll: true }), reduce ? 0 : 600);
     });
+  },
+  /** the journal: one entry per day visited, newest first */
+  showDays(o) {
+    const box = $('#days'), list = $('#days .list'); list.replaceChildren(); $('#days .sum').textContent = o.summary;
+    const el = (tag: string, cls: string, text = '') => { const e = document.createElement(tag); e.className = cls; e.textContent = text; return e; };
+    if (!o.days.length) list.append(el('p', 'none', 'Nothing here yet. Plant a feeling, set down a worry or whisper a wish, and today will be kept.'));
+    for (const d of o.days) {
+      const day = el('div', 'day'); day.append(el('h3', '', d.label));
+      if (d.feelings.length) { const f = el('div', 'feel'); for (const x of d.feelings) { const sp = el('span', ''), dot = document.createElement('i'); dot.style.background = x.color; sp.append(dot, x.name); f.append(sp); } day.append(f); }
+      for (const [k, v] of d.rows) { const r = el('p', 'row'); r.append(el('b', '', k)); const em = el('em', '', v); r.append(em); day.append(r); }
+      list.append(day);
+    }
+    const close = () => { box.hidden = true; box.onkeydown = null; };
+    $('#days .x').onclick = close; box.onkeydown = e => { if (e.key === 'Escape') close(); };
+    box.hidden = false; box.scrollTop = 0; setTimeout(() => $('#days .x').focus(), 30);
   },
   /** a plain yes-or-no before something that cannot be undone; the safe answer is the default */
   confirm(o) {
@@ -171,7 +188,7 @@ if (begun) {
   const dawn = $('#dawn'); dawn.hidden = false; setTimeout(() => (dawn.hidden = true), 2600);
   setTimeout(() => hooks.caption('Fresh ground', 'Everything has drifted off. What is happening in your world today?', { hold: 9 }), 900);
   setTimeout(() => garden.idleCaption(), 10500);
-} else setTimeout(() => garden.idleCaption(), 700);
+} else setTimeout(() => garden.welcome(), 700);
 void detectComposer();
 
 // the same actions for keyboards and screen readers
@@ -184,5 +201,10 @@ add('Tell the wish tree what you did', () => void garden.askStep());
 add('Let a wish go', () => garden.releaseWish());
 add('Set down a worry', () => void garden.askWorry());
 add('Let the worry go', () => garden.releaseWorry());
+add('See your days in the garden', () => garden.openDays());
 add('Toggle sound', () => garden.toggleSound());
+add('Pretend it is tomorrow (testing)', () => garden.tomorrow());
 add('Begin the garden again', () => void garden.beginAgain());
+
+// testing: three quick taps on the wordmark and the garden behaves as if a night has passed
+{ let taps: number[] = []; $('#mark').addEventListener('click', () => { const now = Date.now(); taps = [...taps.filter(t => now - t < 1200), now]; if (taps.length >= 3) { taps = []; garden.tomorrow(); } }); }

@@ -146,6 +146,22 @@ Wishes
   `shared/prompts.mjs`, `/api/desire` on the server), otherwise from the themes
   in `src/desire.ts`. A wish's scene never has a storm, rain, a door, a gate or lanterns.
 
+Coming back
+- **The garden remembers on this device.** Your worry, your wish tree and its
+  leaves are still there tomorrow (browser storage; no account, no sync).
+- **Welcome back.** On a new day the garden greets you with what it has been
+  keeping. For a worry: "How does it feel today?" (lighter, about the same,
+  heavier), with a way to let it go or look at it again. For a wish: "Did you
+  take a step toward it?"
+- **Days.** The "days" charm on the branch opens a journal, newest first: the
+  feelings planted, the worry set down (a few words only, never the whole
+  text), the words chosen, the wish and the steps taken.
+- **The cairn.** A worry that is finished or let go becomes a small stone
+  stacked beside the resting stone. Touch the cairn to read each one (a few
+  words and the day); each can be removed.
+- **Testing.** Tap the "expanse" wordmark three times quickly and the garden
+  behaves as if a night has passed.
+
 Beginning again
 - The branch at the top holds three charms: skies, sound, and a dandelion
   clock, "begin again". It asks first ("Let the garden go to seed?"), with

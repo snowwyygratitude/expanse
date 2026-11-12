@@ -15,6 +15,11 @@ export interface Planted { emo: Emotion | 'wish' | 'worry'; x: number; y: number
 /** a wish growing in the garden: a young tree, its three blossoms, and a leaf for every step taken toward it */
 export type Desire = DesireSpec & { id: string; x: number; y: number; born: number; opened: boolean[]; steps: { text: string; date: number }[]; active: boolean };
 export const MAX_WISHES = 1;
+/** one visit day. Worries are kept as a few words only, never the whole text. */
+export interface Day { feelings: string[]; worry?: string; felt?: string; kept?: string; wish?: string; steps: string[]; }
+/** a worry that was finished or let go, kept as a small stone: a few words and a date */
+export interface CairnStone { id: string; words: string; day: string; kept?: string; }
+export const fewWords = (t: string, n = 5) => { const w = t.trim().split(/\s+/); return w.length <= n ? w.join(' ') : w.slice(0, n).join(' ') + '…'; };
 
 export interface Save {
   v: 1;
@@ -24,6 +29,10 @@ export interface Save {
   worry: (WorrySpec & { stage: 'held' | 'planted' | 'done'; opened: boolean[]; explored?: boolean; part?: string; /** what the person said about each bud */ felt?: ('helps' | 'not quite' | null)[]; /** every version of each bud they have been shown */ seen?: string[][] }) | null;
   /** one wish tree at a time (kept as a list so older saves carry over) */
   desires: Desire[];
+  days: Record<string, Day>;            // YYYY-MM-DD -> what happened that day
+  cairn: CairnStone[];
+  lastDay: string;                      // the last day the garden was visited
+  dayShift: number;                     // testing only: how many days ahead the garden pretends to be
   discovered: Record<string, number>;   // world key -> first seen
   treasures: Record<string, number>;    // keepsake kind -> first found
   keepsakes: Keepsake[];
@@ -41,7 +50,7 @@ export interface Save {
 
 const KEY = 'expanse.garden.v1';
 const fresh = (): Save => ({
-  v: 1, planted: [], wish: null, worry: null, desires: [], discovered: {}, treasures: {}, keepsakes: [], memories: [],
+  v: 1, planted: [], wish: null, worry: null, desires: [], days: {}, cairn: [], lastDay: '', dayShift: 0, discovered: {}, treasures: {}, keepsakes: [], memories: [],
   hopeUnlocked: false, everPlanted: false, layout: null, moveHint: false, worryUsed: false, sound: false, soundOff: false, lastVisit: '',
 });
 
